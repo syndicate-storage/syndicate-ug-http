@@ -1,8 +1,12 @@
+#!/bin/env node
+
 var path = require('path');
 var spawn = require('child_process').spawn;
 var options = {};
 var syndicatefs;
-var restfs = require('./restFs.js')
+var express = require('express');
+var app = express();
+var restfs = require('./restfs.js');
 
 const DEFAULT_PORT_NUMBER = 11010;
 const DEFAULT_MOUNT_POINT_PREFIX = "/tmp/syndicate_ug/syndicate_ug_http_";
@@ -84,7 +88,7 @@ function tryFinishSyndicateGracefully() {
 
 function detectSyndicateFsPath() {
     //TODO: need to return syndicateFs install path
-    return "syndicatefs";
+    return "syndicate";
 }
 
 function exitHandler(options, err) {
@@ -102,6 +106,8 @@ function exitHandler(options, err) {
 
 (function main() {
     parseArgs();
+
+    prepareMountPoint();
 
     console.log("Syndicate-UG-HTTP uses '" + options.mount_path + "' as a mountpoint");
     console.log("Syndicate-UG-HTTP opens a service port " + options.port);
@@ -131,13 +137,19 @@ function exitHandler(options, err) {
         syndicatefs.on('uncaughtException', exitHandler.bind(null, {cleanup:true}));
         syndicatefs.on('SIGINT', exitHandler.bind(null, {cleanup:true}));
         
-        // start RESTfs
-        restfs.start({
-            // Port designation
-            port: options.port,
-            // Base directory
-            base: options.mount_path,
-            servicename: "syndicateUG"
+        // start restfs
+        app.use(function(req, res, next) {
+            console.log('%s %s', req.method, req.url);
+            next();
+        });
+
+        app.use('/', restfs({
+            backend: 'filesystem',
+            basepath: options.mount_path
+        }));
+
+        app.listen(options.port, function() {
+            console.log("listening at " + options.port);
         });
     } catch (e) {
         console.log("Exception occured when starting file system: " + e);

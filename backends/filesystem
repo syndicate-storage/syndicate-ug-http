@@ -1,0 +1,114 @@
+/***********************************************************************************************
+ * This part is based on exposefs (https://github.com/gchaincl/exposefs) written by Gustaf Shin.
+ ***********************************************************************************************/
+var fs = require('fs');
+var Tail = require('tail').Tail;
+
+module.exports = function(options) {
+    var basepath = options.basepath || ".";
+    if (basepath == "/") basepath = "";
+
+    return {
+        stat: function(path, options, fn) {
+            path = basepath + path;
+            fs.stat(path, function(err, data) {
+                if (err) return fn(err);
+
+                fn(null, data);
+            });
+        },
+
+        readdir: function(path, options, fn) {
+            path = basepath + path;
+            fs.readdir(path, fn);
+        },
+
+        readdirwithstat: function(path, options, fn) {
+            var entries = [];
+            abspath = basepath + path;
+            fs.readdir(abspath, function(err, ddata) {
+                if (err) return fn(err);
+
+                var result_cnt = 0;
+                for(var i=0;i<ddata.length;i++) {
+                    var pos = i;
+                    fs.stat(abspath + ddata[pos], function(err, sdata) {
+                        result_cnt++;
+
+                        if (err) return fn(err);
+
+                        entries.push({name: ddata[pos], stat: sdata});
+
+                        // return if this is the last
+                        if(result_cnt >= ddata.length) {
+                            fn(null, entries);                            
+                        }
+                    });
+                }
+            });
+        },
+
+        readfully: function(path, options, fn) {
+            path = basepath + path;
+            fs.readFile(path, fn);
+        },
+
+        follow: function(path, options, fn) {
+            path = basepath + path;
+            var tail = new Tail(path);
+
+            tail.on("line", function(data) {
+                res.write(data + "\n");
+            });
+
+            return tail.unwatch;
+        },
+
+        // default read operation
+        read: function(path, options, fn) {
+            path = basepath + path;
+            fs.stat(path, function(err, data) {
+                if (err) return fn(err);
+
+                if (data.isDirectory()) {
+                    fs.readdir(path, fn);
+                } else {
+                    if(options.stat !== undefined) {
+                        fn(null, data);
+                    } else {
+                        fs.readFile(path, fn);
+                    }
+                }
+            });
+        },
+
+    create: function(path, stream, options, fn) {
+      var flags = options.flags || 'w';
+      var mode = options.mode;
+      path = basepath + path;
+
+      if(options.directory === true) {
+        return fs.mkdir(path, mode, fn);
+      }
+
+      target = fs.createWriteStream(path, {flags:flags, mode:mode});
+      stream.pipe(target)
+        .on('error', fn)
+        .on('close', fn);
+    },
+
+    write: function(path, stream, options, fn) {
+      this.create(path, stream, {flags: 'a'}, fn);
+    },
+
+    utimes: function(path, options, fn) {
+      var now = new Date();
+      fs.utimes(basepath + path, now, now, fn);
+    },
+
+    unlink: function(path, options, fn) {
+      path = basepath + path;
+      fs.unlink(path, fn);
+    }
+  };
+};

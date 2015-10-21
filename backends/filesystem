@@ -2,6 +2,7 @@
  * This part is based on exposefs (https://github.com/gchaincl/exposefs) written by Gustaf Shin.
  ***********************************************************************************************/
 var fs = require('fs');
+var xattr = require('fs-xattr');
 var Tail = require('tail').Tail;
 
 module.exports = function(options) {
@@ -16,6 +17,30 @@ module.exports = function(options) {
 
                 fn(null, data);
             });
+        },
+
+        getxattr: function(path, options, fn) {
+            var key = options.key;
+            path = basepath + path;
+            xattr.get(path, key, fn);
+        },
+
+        listxattr: function(path, options, fn) {
+            path = basepath + path;
+            xattr.list(path, fn);
+        },
+
+        setxattr: function(path, options, fn) {
+            var key = options.key;
+            var val = options.val;
+            path = basepath + path;
+            xattr.set(path, key, val, fn);
+        },
+
+        rmxattr: function(path, options, fn) {
+            var key = options.key;
+            path = basepath + path;
+            xattr.remove(path, key, fn);
         },
 
         readdir: function(path, options, fn) {
@@ -53,6 +78,42 @@ module.exports = function(options) {
             fs.readFile(path, fn);
         },
 
+        open: function(path, options, fn) {
+            var flags = options.flags || 'r';
+            var mode = options.mode;
+            path = basepath + path;
+            fs.open(path, flags, mode, fn);
+        },
+
+        read: function(path, options, fn) {
+            var fd = options.fd;
+            var offset = options.offset || 0;
+            var length = options.length || 0;
+            var buffer = new Buffer(length);
+            path = basepath + path;
+            fs.read(fd, buffer, offset, length, 0, fn);
+        },
+
+        write: function(path, stream, options, fn) {
+            var fd = options.fd;
+            var offset = options.offset || 0;
+            var length = options.length || 0;
+            var buffer = new Buffer(length);
+            path = basepath + path;
+            stream.on('error', fn);
+            stream.on('close', fn);
+            stream.on('data', function(chunk) {
+                fs.write(fd, chunk, offset, fn);
+                offset+=chunk.length;
+            });
+        },
+
+        close: function(path, options, fn) {
+            var fd = options.fd;
+            path = basepath + path;
+            fs.close(fd, fn);
+        },
+
         follow: function(path, options, fn) {
             path = basepath + path;
             var tail = new Tail(path);
@@ -64,51 +125,47 @@ module.exports = function(options) {
             return tail.unwatch;
         },
 
-        // default read operation
-        read: function(path, options, fn) {
+        mkdir: function(path, options, fn) {
+            var mode = options.mode;
             path = basepath + path;
-            fs.stat(path, function(err, data) {
-                if (err) return fn(err);
-
-                if (data.isDirectory()) {
-                    fs.readdir(path, fn);
-                } else {
-                    if(options.stat !== undefined) {
-                        fn(null, data);
-                    } else {
-                        fs.readFile(path, fn);
-                    }
-                }
-            });
+            return fs.mkdir(path, mode, fn);
         },
 
-    create: function(path, stream, options, fn) {
-      var flags = options.flags || 'w';
-      var mode = options.mode;
-      path = basepath + path;
+        writefully: function(path, stream, options, fn) {
+            var flags = options.flags || 'w';
+            path = basepath + path;
+            target = fs.createWriteStream(path, {flags:flags, mode:mode});
+            stream.pipe(target)
+            .on('error', fn)
+            .on('close', fn);
+        },
 
-      if(options.directory === true) {
-        return fs.mkdir(path, mode, fn);
-      }
+        utimes: function(path, options, fn) {
+            var now = options.time || new Date();
+            path = basepath + path;
+            fs.utimes(path, now, now, fn);
+        },
 
-      target = fs.createWriteStream(path, {flags:flags, mode:mode});
-      stream.pipe(target)
-        .on('error', fn)
-        .on('close', fn);
-    },
+        truncate: function(path, options, fn) {
+            var offset = options.truncate || 0;
+            path = basepath + path;
+            fs.truncate(path, offset, fn);
+        },
 
-    write: function(path, stream, options, fn) {
-      this.create(path, stream, {flags: 'a'}, fn);
-    },
+        rename: function(path, options, fn) {
+            var to = options.to;
+            path = basepath + path;
+            fs.rename(path, to, fn);
+        },
 
-    utimes: function(path, options, fn) {
-      var now = new Date();
-      fs.utimes(basepath + path, now, now, fn);
-    },
+        rmdir: function(path, options, fn) {
+            path = basepath + path;
+            fs.rmdir(path, fn);
+        },
 
-    unlink: function(path, options, fn) {
-      path = basepath + path;
-      fs.unlink(path, fn);
-    }
-  };
+        unlink: function(path, options, fn) {
+            path = basepath + path;
+            fs.unlink(path, fn);
+        }
+    };
 };

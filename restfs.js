@@ -23,24 +23,48 @@ module.exports = function(options) {
     router.get('*', function(req, res) {
         var options = req.query;
 
-        // stat: with ?stat
         if(options.stat !== undefined) {
+            // stat: ?stat
             backend.stat(req.target, options, function(err, data) {
                 res.send(err || data);
             });
+        } else if(options.getxattr !== undefined) {
+            // getxattr: ?getxattr&key='name'
+            backend.getxattr(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.listxattr !== undefined) {
+            // listxattr: ?listxattr
+            backend.listxattr(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
         } else if(options.readdir !== undefined) {
+            // readdir: ?readdir
             backend.readdir(req.target, options, function(err, data) {
                 res.send(err || data);
             });
         } else if(options.readdirwithstat !== undefined) {
+            // readdirwithstat: ?readdirwithstat
             backend.readdirwithstat(req.target, options, function(err, data) {
                 res.send(err || data);
             });
         } else if(options.readfully !== undefined) {
+            // readfully: ?readfully
             backend.readfully(req.target, options, function(err, data) {
                 res.send(err || data);
             });
+        } else if(options.open !== undefined) {
+            // open: ?open&flags='r'&mode=777
+            backend.open(req.target, options, function(err, data) {
+                res.send(err || {fd:data});
+            });
+        } else if(options.read !== undefined) {
+            // read: ?read&fd=fd&offset=offset&length=len
+            backend.read(req.target, options, function(err, bytesRead, data) {
+                res.send(err || data.slice(0, bytesRead));
+            });
         } else if(options.follow !== undefined) {
+            // follow: ?follow
             backend.readfully(req.target, options, function(err, data) {
                 res.writeHead(200, {
                     'Content-Type': 'text/event-stream',
@@ -53,57 +77,126 @@ module.exports = function(options) {
                 fn = backend.follow(req.target, options, res);
                 res.socket.on('close', fn);
             });
-        } else {
-            // default
-            backend.read(req.target, options, function(err, data) {
-                res.send(err || data);
-            });
         }
     });
 
     /*
      * HTTP POST: write/mkdir operations
      */
-  router.post('*', function(req, res) {
-    var target = req.target;
-    var options = req.query;
+    router.post('*', function(req, res) {
+        var options = req.query;
 
-    if(target.charAt(target.length - 1) == "/") {
-      options.directory = true;
-      target = target.substr(0, target.length - 1);
-    }
-
-    backend.create(target, req, options, function(err, data) {
-      if(err)
-        res.status(401).send(err);
-      else
-        res.status(201).send(data);
+        if(options.mkdir !== undefined) {
+            // mkdir: ?mkdir&mode=777
+            backend.mkdir(req.target, options, function(err, data) {
+                if(err)
+                    res.status(401).send(err);
+                else
+                    res.status(201).send(data);
+            });
+        } else if(options.writefully !== undefined) {
+            // writefully: ?writefully
+            backend.writefully(req.target, req, options, function(err, data) {
+                if(err)
+                    res.status(401).send(err);
+                else
+                    res.status(201).send(data);
+            });
+        } else if(options.setxattr !== undefined) {
+            // setxattr: ?setxattr&key='name'&val='val'
+            backend.setxattr(req.target, options, function(err, data) {
+                if(err)
+                    res.status(401).send(err);
+                else
+                    res.status(201).send(data);
+            });
+        } else if(options.write !== undefined) {
+            // write: ?write&fd=fd&offset=offset&length=len
+            backend.write(req.target, req, options, function(err, bytesWritten, data) {
+                if(err)
+                    res.status(401).send(err);
+                else
+                    res.status(201).send({written:bytesWritten});
+            });
+        }
     });
-  });
 
-  router.put('*', function(req, res) {
-    var options = req.query;
+    /*
+     * HTTP PUT: write operations
+     */
+    router.put('*', function(req, res) {
+        var options = req.query;
 
-    backend.write(req.target, req, options, function(err, data) {
-      res.send(err || data);
+        if(options.writefully !== undefined) {
+            // writefully: ?writefully
+            backend.writefully(req.target, req, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.setxattr !== undefined) {
+            // setxattr: ?setxattr&key='name'&val='val'
+            backend.setxattr(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.write !== undefined) {
+            // write: ?write&fd=fd&offset=offset&length=len
+            backend.write(req.target, req, options, function(err, bytesWritten, data) {
+                res.send(err || {written:bytesWritten});
+            });
+        }
     });
-  });
 
-  router.patch('*', function(req, res) {
-    var options = req.query;
+    /*
+     * HTTP PATCH: utimes operations
+     */
+    router.patch('*', function(req, res) {
+        var options = req.query;
 
-    backend.utimes(req.target, options, function(err, data) {
-      res.send(err || data);
+        if(options.utimes !== undefined) {
+            // utimes: ?utimes&time=new_time
+            backend.utimes(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.rename !== undefined) {
+            // rename: ?rename&to='to_filename'
+            backend.rename(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.truncate !== undefined) {
+            // truncate: ?truncate&offset=offset
+            backend.truncate(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        }
     });
-  });
 
-  router.delete('*', function(req, res) {
-    var options = req.query;
+    /*
+     * HTTP DELETE: unlink operations
+     */
+    router.delete('*', function(req, res) {
+        var options = req.query;
 
-    backend.unlink(req.target, options, function(err, data) {
-      res.send(err || data);
+        if(options.rmdir !== undefined) {
+            // rmdir: ?rmdir
+            backend.rmdir(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.unlink !== undefined) {
+            // unlink: ?unlink
+            backend.unlink(req.target, req, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.rmxattr !== undefined) {
+            // rmxattr: ?rmxattr&key='name'
+            backend.rmxattr(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.close !== undefined) {
+            // close: ?close&fd=fd
+            backend.close(req.target, options, function(err, data) {
+                res.send(err || {fd:data});
+            });
+        }
     });
-  });
 
-  return router;
+    return router;
 };

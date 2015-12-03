@@ -15,6 +15,10 @@ module.exports = function(options) {
             fs.stat(path, function(err, data) {
                 if (err) return fn(err);
 
+                data.atime = data.atime.getTime();
+                data.mtime = data.mtime.getTime();
+                data.ctime = data.ctime.getTime();
+                delete data.birthtime;
                 fn(null, data);
             });
         },
@@ -22,12 +26,28 @@ module.exports = function(options) {
         getxattr: function(path, options, fn) {
             var key = options.key;
             path = basepath + path;
-            xattr.get(path, key, fn);
+            xattr.get(path, key, function(err, data) {
+                if (err) return fn(err);
+
+                var xval;
+                xval = {
+                    value: data
+                };
+                fn(null, xval);
+            });
         },
 
         listxattr: function(path, options, fn) {
             path = basepath + path;
-            xattr.list(path, fn);
+            xattr.list(path, function(err, data) {
+                if (err) return fn(err);
+
+                var xval;
+                xval = {
+                    keys: data
+                };
+                fn(null, xval);
+            });
         },
 
         setxattr: function(path, options, fn) {
@@ -45,30 +65,57 @@ module.exports = function(options) {
 
         readdir: function(path, options, fn) {
             path = basepath + path;
-            fs.readdir(path, fn);
+            fs.readdir(path, function(err, data) {
+                if (err) return fn(err);
+
+                var entries;
+                entries = {
+                    entries: data
+                };
+                fn(null, entries);
+            });
         },
 
         readdirwithstat: function(path, options, fn) {
-            var entries = [];
-            abspath = basepath + path;
-            fs.readdir(abspath, function(err, ddata) {
+            path = basepath + path;
+            fs.readdir(path, function(err, ddata) {
                 if (err) return fn(err);
 
-                var result_cnt = 0;
+                var arr = [];
+                var task_counter = 0;
+                var err_in_loop = false;
+
                 for(var i=0;i<ddata.length;i++) {
-                    var pos = i;
-                    fs.stat(abspath + ddata[pos], function(err, sdata) {
-                        result_cnt++;
+                    (function(bp, outarr, parr, idx) {
+                        fs.stat(bp + parr[idx], function(err, sdata) {
+                            task_counter++;
 
-                        if (err) return fn(err);
+                            if (err_in_loop) {
+                                return;
+                            }
 
-                        entries.push({name: ddata[pos], stat: sdata});
+                            if (err) {
+                                err_in_loop = true;
+                                return fn(err);
+                            }
 
-                        // return if this is the last
-                        if(result_cnt >= ddata.length) {
-                            fn(null, entries);                            
-                        }
-                    });
+                            sdata.atime = sdata.atime.getTime();
+                            sdata.mtime = sdata.mtime.getTime();
+                            sdata.ctime = sdata.ctime.getTime();
+                            delete sdata.birthtime;
+                            outarr.push({path: parr[idx], stat: sdata});
+
+                            // return if this is the last
+                            if(task_counter >= parr.length) {
+                                var entries;
+                                entries = {
+                                    entries: outarr
+                                };
+
+                                fn(null, entries);
+                            }
+                        });
+                    })(path, arr, ddata, i);
                 }
             });
         },
@@ -80,24 +127,24 @@ module.exports = function(options) {
 
         open: function(path, options, fn) {
             var flags = options.flags || 'r';
-            var mode = options.mode;
+            var mode = parseInt(options.mode);
             path = basepath + path;
             fs.open(path, flags, mode, fn);
         },
 
         read: function(path, options, fn) {
-            var fd = options.fd;
-            var offset = options.offset || 0;
-            var length = options.length || 0;
+            var fd = parseInt(options.fd);
+            var offset = Number(options.offset) || 0;
+            var length = Number(options.length) || 0;
             var buffer = new Buffer(length);
             path = basepath + path;
-            fs.read(fd, buffer, offset, length, 0, fn);
+            fs.read(fd, buffer, 0, length, offset, fn);
         },
 
         write: function(path, stream, options, fn) {
-            var fd = options.fd;
-            var offset = options.offset || 0;
-            var length = options.length || 0;
+            var fd = parseInt(options.fd);
+            var offset = Number(options.offset) || 0;
+            var length = Number(options.length) || 0;
             var buffer = new Buffer(length);
             path = basepath + path;
             stream.on('error', fn);
@@ -109,7 +156,7 @@ module.exports = function(options) {
         },
 
         close: function(path, options, fn) {
-            var fd = options.fd;
+            var fd = parseInt(options.fd);
             path = basepath + path;
             fs.close(fd, fn);
         },
@@ -141,13 +188,13 @@ module.exports = function(options) {
         },
 
         utimes: function(path, options, fn) {
-            var now = options.time || new Date();
+            var now = Number(options.time) || (new Date()).getTime();
             path = basepath + path;
             fs.utimes(path, now, now, fn);
         },
 
         truncate: function(path, options, fn) {
-            var offset = options.truncate || 0;
+            var offset = Number(options.truncate) || 0;
             path = basepath + path;
             fs.truncate(path, offset, fn);
         },

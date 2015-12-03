@@ -190,7 +190,7 @@ module.exports = function(options) {
         utimes: function(path, options, fn) {
             var now = Number(options.time) || (new Date()).getTime();
             path = basepath + path;
-            fs.utimes(path, now, now, fn);
+            fs.utimes(path, new Date(now), new Date(now), fn);
         },
 
         truncate: function(path, options, fn) {

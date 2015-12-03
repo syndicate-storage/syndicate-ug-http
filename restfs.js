@@ -120,6 +120,21 @@ module.exports = function(options) {
                 else
                     res.status(201).send({written:bytesWritten});
             });
+        } else if(options.utimes !== undefined) {
+            // utimes: ?utimes&time=new_time
+            backend.utimes(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.rename !== undefined) {
+            // rename: ?rename&to='to_filename'
+            backend.rename(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.truncate !== undefined) {
+            // truncate: ?truncate&offset=offset
+            backend.truncate(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
         } else {
             res.status(404).send();
         }
@@ -145,6 +160,21 @@ module.exports = function(options) {
             // write: ?write&fd=fd&offset=offset&length=len
             backend.write(req.target, req, options, function(err, bytesWritten, data) {
                 res.send(err || {written:bytesWritten});
+            });
+        else if(options.utimes !== undefined) {
+            // utimes: ?utimes&time=new_time
+            backend.utimes(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.rename !== undefined) {
+            // rename: ?rename&to='to_filename'
+            backend.rename(req.target, options, function(err, data) {
+                res.send(err || data);
+            });
+        } else if(options.truncate !== undefined) {
+            // truncate: ?truncate&offset=offset
+            backend.truncate(req.target, options, function(err, data) {
+                res.send(err || data);
             });
         } else {
             res.status(404).send();

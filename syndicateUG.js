@@ -88,7 +88,7 @@ function tryFinishSyndicateGracefully() {
 
 function detectSyndicateFsPath() {
     //TODO: need to return syndicateFs install path
-    return "syndicate";
+    return "cat";
 }
 
 function exitHandler(options, err) {
@@ -114,7 +114,7 @@ function exitHandler(options, err) {
 
     console.log("Syndicate-UG-HTTP start");
     try {
-        console.log("spawning syndicatefs with");
+        console.log("spawning syndicatefs");
         //console.log(JSON.stringify(options));
 
         // execute

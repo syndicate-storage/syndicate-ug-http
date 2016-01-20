@@ -26,42 +26,66 @@ module.exports = function(options) {
         if(options.stat !== undefined) {
             // stat: ?stat
             backend.stat(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.getxattr !== undefined) {
             // getxattr: ?getxattr&key='name'
             backend.getxattr(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.listxattr !== undefined) {
             // listxattr: ?listxattr
             backend.listxattr(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.readdir !== undefined) {
             // readdir: ?readdir
             backend.readdir(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.readdirwithstat !== undefined) {
             // readdirwithstat: ?readdirwithstat
             backend.readdirwithstat(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.readfully !== undefined) {
             // readfully: ?readfully
             backend.readfully(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data);
             });
         } else if(options.open !== undefined) {
             // open: ?open&flags='r'&mode=777
             backend.open(req.target, options, function(err, data) {
-                res.send(err || {fd:data});
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send({fd:data});
             });
         } else if(options.read !== undefined) {
             // read: ?read&fd=fd&offset=offset&length=len
             backend.read(req.target, options, function(err, bytesRead, data) {
-                res.send(err || data.slice(0, bytesRead));
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(200).send(data.slice(0, bytesRead));
             });
         } else if(options.follow !== undefined) {
             // follow: ?follow
@@ -78,7 +102,7 @@ module.exports = function(options) {
                 res.socket.on('close', fn);
             });
         } else {
-            res.status(404).send();
+            res.status(403).send();
         }
     });
 
@@ -136,7 +160,7 @@ module.exports = function(options) {
                 res.send(err || data);
             });
         } else {
-            res.status(404).send();
+            res.status(403).send();
         }
     });
 
@@ -149,35 +173,53 @@ module.exports = function(options) {
         if(options.writefully !== undefined) {
             // writefully: ?writefully
             backend.writefully(req.target, req, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.setxattr !== undefined) {
             // setxattr: ?setxattr&key='name'&val='val'
             backend.setxattr(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.write !== undefined) {
             // write: ?write&fd=fd&offset=offset&length=len
             backend.write(req.target, req, options, function(err, bytesWritten, data) {
-                res.send(err || {written:bytesWritten});
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send({written:bytesWritten});
             });
-        else if(options.utimes !== undefined) {
+        } else if(options.utimes !== undefined) {
             // utimes: ?utimes&time=new_time
             backend.utimes(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.rename !== undefined) {
             // rename: ?rename&to='to_filename'
             backend.rename(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.truncate !== undefined) {
             // truncate: ?truncate&offset=offset
             backend.truncate(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else {
-            res.status(404).send();
+            res.status(403).send();
         }
     });
 
@@ -190,20 +232,29 @@ module.exports = function(options) {
         if(options.utimes !== undefined) {
             // utimes: ?utimes&time=new_time
             backend.utimes(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.rename !== undefined) {
             // rename: ?rename&to='to_filename'
             backend.rename(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.truncate !== undefined) {
             // truncate: ?truncate&offset=offset
             backend.truncate(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else {
-            res.status(404).send();
+            res.status(403).send();
         }
     });
 
@@ -216,25 +267,37 @@ module.exports = function(options) {
         if(options.rmdir !== undefined) {
             // rmdir: ?rmdir
             backend.rmdir(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.unlink !== undefined) {
             // unlink: ?unlink
             backend.unlink(req.target, req, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.rmxattr !== undefined) {
             // rmxattr: ?rmxattr&key='name'
             backend.rmxattr(req.target, options, function(err, data) {
-                res.send(err || data);
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send(data);
             });
         } else if(options.close !== undefined) {
             // close: ?close&fd=fd
             backend.close(req.target, options, function(err, data) {
-                res.send(err || {fd:data});
+                if(err)
+                    res.status(500).send(err);
+                else
+                    res.status(202).send({fd:data});
             });
         } else {
-            res.status(404).send();
+            res.status(403).send();
         }
     });
 

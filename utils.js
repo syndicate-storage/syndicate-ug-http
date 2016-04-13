@@ -20,7 +20,7 @@
 module.exports = {
     parse_args: function(args) {
         var options = {
-            port: 8080
+            port: 8888
         };
 
         // parse

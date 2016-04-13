@@ -20,13 +20,46 @@
 module.exports = {
     parse_args: function(args) {
         var options = {
-            port: 8888
+            user: "",
+            volume: "",
+            gateway: "",
+            anonymous: false,
+            port: 8888,
         };
 
         // parse
         // start from 1, [0] is "syndicate-ug-http.js"
         var i;
         for(i=1;i<args.length;i++) {
+            if(args[i] === "-u") {
+                if(i+1 < args.length) {
+                    options.user = args[i+1];
+                    i++;
+                }
+                continue;
+            }
+
+            if(args[i] === "-v") {
+                if(i+1 < args.length) {
+                    options.volume = args[i+1];
+                    i++;
+                }
+                continue;
+            }
+
+            if(args[i] === "-g") {
+                if(i+1 < args.length) {
+                    options.gateway = args[i+1];
+                    i++;
+                }
+                continue;
+            }
+
+            if(args[i] === "--anonymous" || args[i] === "-A") {
+                options.anonymous = true;
+                continue;
+            }
+
             if(args[i] === "--port" || args[i] === "-p") {
                 if(i+1 < args.length) {
                     options.port = parseInt(args[i+1]);

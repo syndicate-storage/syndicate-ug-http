@@ -17,27 +17,47 @@
 
 var rest = require('./rest.js');
 var utils = require('./utils.js');
+var cluster = require('cluster');
 var express = require('express');
 var app = express();
 
 (function main() {
-    var args = process.argv.slice(1);
-    var param = utils.parse_args(args);
+    if (cluster.isMaster) {
+        console.log("Syndicate-UG-HTTP start");
+        var cpuCount = require('os').cpus().length;
+        
+        //for(var i=0;i<cpuCount;i++){
+            cluster.fork();
+        //}
+    } else {
+        var args = process.argv.slice(1);
+        var param = utils.parse_args(args);
 
-    console.log("Syndicate-UG-HTTP start");
-    try {
-        // start restfs
-        app.use(function(req, res, next) {
-            console.log('%s %s', req.method, req.url);
-            next();
-        });
+        try {
+            // start restfs
+            app.use(function(req, res, next) {
+                console.log('%s %s', req.method, req.url);
+                next();
+            });
 
-        app.use('/', rest());
+            var ug = rest.init(param);
 
-        app.listen(param.port, function() {
-            console.log("listening at " + param.port);
-        });
-    } catch (e) {
-        console.log("Exception occured: " + e);
+            app.use(function(req, res, next) {
+                req.ug = ug;
+                next();
+            });
+
+            app.use('/', rest.getRouter());
+
+            app.listen(param.port, function() {
+                console.log("listening at " + param.port);
+                console.log("Worker " + cluster.worker.id + " running");
+            });
+
+            // must not shutdown here!
+            //rest.shutdown(ug);
+        } catch (e) {
+            console.log("Exception occured: " + e);
+        }
     }
 })();

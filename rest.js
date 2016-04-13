@@ -1,17 +1,27 @@
-/***********************************************************************************************
- * This part is based on exposefs (https://github.com/gchaincl/exposefs) written by Gustaf Shin.
- ***********************************************************************************************/
+#!/bin/env node
+/*
+   Copyright 2015 The Trustees of Princeton University
+
+   Licensed under the Apache License, Version 2.0 (the "License" );
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 var express = require('express');
 var path = require('path');
 var querystring = require('querystring');
+var syndicate = require('syndicate-drive');
 
-module.exports = function(options) {
+module.exports = function() {
     var router = new express.Router();
-    if(!options) options = {};
-    var backend = options.backend || 'filesystem';
-
-    backend = require('./backends/' + backend)(options);
-
     router.use(function(req, res, next) {
         req.target = querystring.unescape(req.path);
         next();
@@ -22,74 +32,84 @@ module.exports = function(options) {
      */
     router.get('*', function(req, res) {
         var options = req.query;
+        var path = req.target;
 
-        if(options.stat !== undefined) {
+        if(options.stat) {
             // stat: ?stat
-            backend.stat(req.target, options, function(err, data) {
-                if(err)
-                    res.status(500).send(err);
-                else
-                    res.status(200).send(data);
-            });
-        } else if(options.getxattr !== undefined) {
+            try {
+                var ret = syndicate.stat_raw(ug, path);
+                res.status(200).send(ret);
+            } catch (ex) {
+                console.error("Exception occured : " + ex);
+                res.status(500).send(ex.toString());
+            }
+        } else if(options.list_dir) {
+            // stat: ?listdir
+            try {
+                var ret = syndicate.list_dir(ug, path);
+                res.status(200).send(ret);
+            } catch (ex) {
+                console.error("Exception occured : " + ex);
+                res.status(500).send(ex.toString());
+            }
+        } else if(options.getxattr) {
             // getxattr: ?getxattr&key='name'
-            backend.getxattr(req.target, options, function(err, data) {
-                if(err)
-                    res.status(500).send(err);
-                else
-                    res.status(200).send(data);
-            });
-        } else if(options.listxattr !== undefined) {
+            var key = options.key;
+            try {
+                var ret = syndicate.get_xattr(ug, path, key);
+                var json_obj = {
+                    value: ret
+                };
+                res.status(200).send(json_obj);
+            } catch (ex) {
+                console.error("Exception occured : " + ex);
+                res.status(500).send(ex.toString());
+            }
+        } else if(options.listxattr) {
             // listxattr: ?listxattr
-            backend.listxattr(req.target, options, function(err, data) {
-                if(err)
-                    res.status(500).send(err);
-                else
-                    res.status(200).send(data);
-            });
-        } else if(options.readdir !== undefined) {
-            // readdir: ?readdir
-            backend.readdir(req.target, options, function(err, data) {
-                if(err)
-                    res.status(500).send(err);
-                else
-                    res.status(200).send(data);
-            });
-        } else if(options.readdirwithstat !== undefined) {
+            try {
+                var ret = syndicate.list_xattr(ug, path);
+                res.status(200).send(ret);
+            } catch (ex) {
+                console.error("Exception occured : " + ex);
+                res.status(500).send(ex.toString());
+            }
+        /*
+        } else if(options.readdirwithstat) {
             // readdirwithstat: ?readdirwithstat
-            backend.readdirwithstat(req.target, options, function(err, data) {
+            syndicatefs.readdirwithstat(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
                     res.status(200).send(data);
             });
-        } else if(options.readfully !== undefined) {
+        } else if(options.readfully) {
             // readfully: ?readfully
-            backend.readfully(req.target, options, function(err, data) {
+            syndicatefs.readfully(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
                     res.status(200).send(data);
             });
-        } else if(options.open !== undefined) {
+        } else if(options.open) {
             // open: ?open&flags='r'&mode=777
-            backend.open(req.target, options, function(err, data) {
+            syndicatefs.open(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
                     res.status(200).send({fd:data});
             });
-        } else if(options.read !== undefined) {
+        } else if(options.read) {
             // read: ?read&fd=fd&offset=offset&length=len
-            backend.read(req.target, options, function(err, bytesRead, data) {
+            syndicatefs.read(req.target, options, function(err, bytesRead, data) {
                 if(err)
                     res.status(500).send(err);
                 else
                     res.status(200).send(data.slice(0, bytesRead));
             });
-        } else if(options.follow !== undefined) {
+        } else if(options.follow) {
             // follow: ?follow
-            backend.readfully(req.target, options, function(err, data) {
+            syndicatefs.readfully(req.target, options, function(err, data) {
                 res.writeHead(200, {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
@@ -98,9 +118,10 @@ module.exports = function(options) {
 
                 res.write(data, "\n");
 
-                fn = backend.follow(req.target, options, res);
+                fn = syndicatefs.follow(req.target, options, res);
                 res.socket.on('close', fn);
             });
+        */
         } else {
             res.status(403).send();
         }
@@ -109,12 +130,13 @@ module.exports = function(options) {
     /*
      * HTTP POST: write/mkdir operations
      */
+    /*
     router.post('*', function(req, res) {
         var options = req.query;
 
         if(options.mkdir !== undefined) {
             // mkdir: ?mkdir&mode=777
-            backend.mkdir(req.target, options, function(err, data) {
+            syndicatefs.mkdir(req.target, options, function(err, data) {
                 if(err)
                     res.status(401).send(err);
                 else
@@ -122,7 +144,7 @@ module.exports = function(options) {
             });
         } else if(options.writefully !== undefined) {
             // writefully: ?writefully
-            backend.writefully(req.target, req, options, function(err, data) {
+            syndicatefs.writefully(req.target, req, options, function(err, data) {
                 if(err)
                     res.status(401).send(err);
                 else
@@ -130,7 +152,7 @@ module.exports = function(options) {
             });
         } else if(options.setxattr !== undefined) {
             // setxattr: ?setxattr&key='name'&val='val'
-            backend.setxattr(req.target, options, function(err, data) {
+            syndicatefs.setxattr(req.target, options, function(err, data) {
                 if(err)
                     res.status(401).send(err);
                 else
@@ -138,7 +160,7 @@ module.exports = function(options) {
             });
         } else if(options.write !== undefined) {
             // write: ?write&fd=fd&offset=offset&length=len
-            backend.write(req.target, req, options, function(err, bytesWritten, data) {
+            syndicatefs.write(req.target, req, options, function(err, bytesWritten, data) {
                 if(err)
                     res.status(401).send(err);
                 else
@@ -146,33 +168,35 @@ module.exports = function(options) {
             });
         } else if(options.utimes !== undefined) {
             // utimes: ?utimes&time=new_time
-            backend.utimes(req.target, options, function(err, data) {
+            syndicatefs.utimes(req.target, options, function(err, data) {
                 res.send(err || data);
             });
         } else if(options.rename !== undefined) {
             // rename: ?rename&to='to_filename'
-            backend.rename(req.target, options, function(err, data) {
+            syndicatefs.rename(req.target, options, function(err, data) {
                 res.send(err || data);
             });
         } else if(options.truncate !== undefined) {
             // truncate: ?truncate&offset=offset
-            backend.truncate(req.target, options, function(err, data) {
+            syndicatefs.truncate(req.target, options, function(err, data) {
                 res.send(err || data);
             });
         } else {
             res.status(403).send();
         }
     });
+    */
 
     /*
      * HTTP PUT: write operations
      */
+    /*
     router.put('*', function(req, res) {
         var options = req.query;
 
         if(options.writefully !== undefined) {
             // writefully: ?writefully
-            backend.writefully(req.target, req, options, function(err, data) {
+            syndicatefs.writefully(req.target, req, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -180,7 +204,7 @@ module.exports = function(options) {
             });
         } else if(options.setxattr !== undefined) {
             // setxattr: ?setxattr&key='name'&val='val'
-            backend.setxattr(req.target, options, function(err, data) {
+            syndicatefs.setxattr(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -188,7 +212,7 @@ module.exports = function(options) {
             });
         } else if(options.write !== undefined) {
             // write: ?write&fd=fd&offset=offset&length=len
-            backend.write(req.target, req, options, function(err, bytesWritten, data) {
+            syndicatefs.write(req.target, req, options, function(err, bytesWritten, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -196,7 +220,7 @@ module.exports = function(options) {
             });
         } else if(options.utimes !== undefined) {
             // utimes: ?utimes&time=new_time
-            backend.utimes(req.target, options, function(err, data) {
+            syndicatefs.utimes(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -204,7 +228,7 @@ module.exports = function(options) {
             });
         } else if(options.rename !== undefined) {
             // rename: ?rename&to='to_filename'
-            backend.rename(req.target, options, function(err, data) {
+            syndicatefs.rename(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -212,7 +236,7 @@ module.exports = function(options) {
             });
         } else if(options.truncate !== undefined) {
             // truncate: ?truncate&offset=offset
-            backend.truncate(req.target, options, function(err, data) {
+            syndicatefs.truncate(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -222,16 +246,18 @@ module.exports = function(options) {
             res.status(403).send();
         }
     });
+    */
 
     /*
      * HTTP PATCH: utimes operations
      */
+    /*
     router.patch('*', function(req, res) {
         var options = req.query;
 
         if(options.utimes !== undefined) {
             // utimes: ?utimes&time=new_time
-            backend.utimes(req.target, options, function(err, data) {
+            syndicatefs.utimes(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -239,7 +265,7 @@ module.exports = function(options) {
             });
         } else if(options.rename !== undefined) {
             // rename: ?rename&to='to_filename'
-            backend.rename(req.target, options, function(err, data) {
+            syndicatefs.rename(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -247,7 +273,7 @@ module.exports = function(options) {
             });
         } else if(options.truncate !== undefined) {
             // truncate: ?truncate&offset=offset
-            backend.truncate(req.target, options, function(err, data) {
+            syndicatefs.truncate(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -257,16 +283,17 @@ module.exports = function(options) {
             res.status(403).send();
         }
     });
-
+    */
     /*
      * HTTP DELETE: unlink operations
      */
+    /*
     router.delete('*', function(req, res) {
         var options = req.query;
 
         if(options.rmdir !== undefined) {
             // rmdir: ?rmdir
-            backend.rmdir(req.target, options, function(err, data) {
+            syndicatefs.rmdir(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -274,7 +301,7 @@ module.exports = function(options) {
             });
         } else if(options.unlink !== undefined) {
             // unlink: ?unlink
-            backend.unlink(req.target, req, options, function(err, data) {
+            syndicatefs.unlink(req.target, req, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -282,7 +309,7 @@ module.exports = function(options) {
             });
         } else if(options.rmxattr !== undefined) {
             // rmxattr: ?rmxattr&key='name'
-            backend.rmxattr(req.target, options, function(err, data) {
+            syndicatefs.rmxattr(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -290,7 +317,7 @@ module.exports = function(options) {
             });
         } else if(options.close !== undefined) {
             // close: ?close&fd=fd
-            backend.close(req.target, options, function(err, data) {
+            syndicatefs.close(req.target, options, function(err, data) {
                 if(err)
                     res.status(500).send(err);
                 else
@@ -300,6 +327,6 @@ module.exports = function(options) {
             res.status(403).send();
         }
     });
-
+    */
     return router;
 };

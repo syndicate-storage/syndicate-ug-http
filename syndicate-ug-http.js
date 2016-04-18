@@ -19,6 +19,7 @@ var rest = require('./rest.js');
 var utils = require('./utils.js');
 var cluster = require('cluster');
 var express = require('express');
+var nodeCache = require('node-cache')
 var app = express();
 
 (function main() {
@@ -41,9 +42,32 @@ var app = express();
             });
 
             var ug = rest.init(param);
+            var rfdCache = new nodeCache({
+                stdTTL: 600,
+                checkperiod: 600,
+                useClones: false
+            });
+
+            rfdCache.on("expired", function(key, value) {
+                console.log("closing expired file handle for read - " + key);
+                rest.safeclose(ug, value);
+            });
+
+            var wfdCache = new nodeCache({
+                stdTTL: 3600,
+                checkperiod: 600,
+                useClones: false
+            });
+
+            rfdCache.on("expired", function(key, value) {
+                console.log("closing expired file handle for read - " + key);
+                rest.safeclose(ug, value);
+            });
 
             app.use(function(req, res, next) {
                 req.ug = ug;
+                req.rfdCache = rfdCache;
+                req.wfdCache = wfdCache;
                 next();
             });
 

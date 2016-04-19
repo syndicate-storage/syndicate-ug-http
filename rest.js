@@ -75,8 +75,11 @@ module.exports = {
             } else if(options.listdir !== undefined) {
                 // stat: ?listdir
                 try {
-                    var ret = syndicate.list_dir(ug, path);
-                    res.status(200).send(ret);
+                    var entries = syndicate.list_dir(ug, path);
+                    var json_obj = {
+                        entries: entries
+                    };
+                    res.status(200).send(json_obj);
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -85,9 +88,9 @@ module.exports = {
                 // getxattr: ?getxattr&key='name'
                 var key = options.key;
                 try {
-                    var ret = syndicate.get_xattr(ug, path, key);
+                    var xattr = syndicate.get_xattr(ug, path, key);
                     var json_obj = {
-                        value: ret
+                        value: xattr
                     };
                     res.status(200).send(json_obj);
                 } catch (ex) {
@@ -97,8 +100,11 @@ module.exports = {
             } else if(options.listxattr !== undefined) {
                 // listxattr: ?listxattr
                 try {
-                    var ret = syndicate.list_xattr(ug, path);
-                    res.status(200).send(ret);
+                    var xattrs = syndicate.list_xattr(ug, path);
+                    var json_obj = {
+                        keys: xattrs
+                    };
+                    res.status(200).send(json_obj);
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -162,6 +168,35 @@ module.exports = {
                     } else {
                         wfdCache.set(newFd, fh);
                     }
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.checkopen !== undefined) {
+                // checkopen: ?checkopen&fd=fd
+                try {
+                    if(options.fd === undefined) {
+                        throw "fd is not given";
+                    }
+
+                    // using the fd
+                    // stateful
+                    var fd = options.fd;
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+
+                    var opened = false;
+                    if( rfh === undefined && wfh === undefined ) {
+                        opened = false;
+                    } else {
+                        opened = true;
+                    }
+
+                    var json_obj = {
+                        opened: opened
+                    };
+
+                    res.status(200).send(json_obj);
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -245,6 +280,37 @@ module.exports = {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
                     }
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.extendttl !== undefined) {
+                // extendttl: ?extendttl&fd=fd
+                try {
+                    if(options.fd === undefined) {
+                        throw "fd is not given";
+                    }
+
+                    // using the fd
+                    // stateful
+                    var fd = options.fd;
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if( rfh === undefined && wfh === undefined ) {
+                        throw "could not find a file handle"
+                    }
+
+                    if( rfh !== undefined ) {
+                        // extend cache's ttl
+                        rfdCache.ttl(fd);
+                    }
+
+                    if( wfh !== undefined ) {
+                        // extend cache's ttl
+                        wfdCache.ttl(fd);
+                    }
+
+                    res.status(200).send();
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -356,6 +422,37 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.extendttl !== undefined) {
+                // extendttl: ?extendttl&fd=fd
+                try {
+                    if(options.fd === undefined) {
+                        throw "fd is not given";
+                    }
+
+                    // using the fd
+                    // stateful
+                    var fd = options.fd;
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if( rfh === undefined && wfh === undefined ) {
+                        throw "could not find a file handle"
+                    }
+
+                    if( rfh !== undefined ) {
+                        // extend cache's ttl
+                        rfdCache.ttl(fd);
+                    }
+
+                    if( wfh !== undefined ) {
+                        // extend cache's ttl
+                        wfdCache.ttl(fd);
+                    }
+
+                    res.status(200).send();
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             /*
             } else if(options.utimes !== undefined) {
                 // utimes: ?utimes&time=new_time
@@ -427,7 +524,7 @@ module.exports = {
                 // close: ?close&fd=fd
                 var fd = options.fd;
                 try {
-                    var fh = -1;
+                    var fh;
                     var rfh = rfdCache.get(fd);
                     var wfh = wfdCache.get(fd);
                     if( rfh === undefined && wfh === undefined ) {
@@ -436,21 +533,15 @@ module.exports = {
 
                     if( rfh !== undefined ) {
                         fh = rfh;
+                        rfdCache.del(fd);
                     }
                     if( wfh !== undefined ) {
                         fh = wfh;
+                        wfdCache.del(fd);
                     }
 
                     syndicate.close(ug, fh);
                     res.status(200).send();
-
-                    // delete from cache
-                    if( rfh !== undefined ) {
-                        rfdCache.del(fd);
-                    }
-                    if( wfh !== undefined ) {
-                        wfdCache.del(fd);
-                    }
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));             

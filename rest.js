@@ -63,7 +63,16 @@ module.exports = {
             var rfdCache = req.rfdCache;
             var wfdCache = req.wfdCache;
 
-            if(options.stat !== undefined) {
+            if(options.statvfs !== undefined) {
+                // statvfs: ?statvfs
+                try {
+                    var ret = syndicate.statvfs(ug);
+                    res.status(200).send(ret);
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.stat !== undefined) {
                 // stat: ?stat
                 try {
                     var ret = syndicate.stat_raw(ug, path);

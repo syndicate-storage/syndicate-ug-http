@@ -29,6 +29,13 @@ function make_error_object(ex) {
     };
 }
 
+function make_error_object_async(err) {
+    return {
+        name: "error",
+        message: err,
+    };
+}
+
 module.exports = {
     init: function(param) {
         var opts = syndicate.create_opts(param.user, param.volume, param.gateway, param.anonymous);
@@ -81,14 +88,48 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.stat_async !== undefined) {
+                // stat_async: ?stat_async
+                try {
+                    syndicate.stat_raw_async(ug, path, function(err, stat) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                        }
+
+                        res.status(200).send(stat);                        
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             } else if(options.listdir !== undefined) {
-                // stat: ?listdir
+                // listdir: ?listdir
                 try {
                     var entries = syndicate.list_dir(ug, path);
                     var json_obj = {
                         entries: entries
                     };
                     res.status(200).send(json_obj);
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.listdir_async !== undefined) {
+                // listdir_async: ?listdir_async
+                try {
+                    syndicate.list_dir_async(ug, path, function(err, entries) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                        }
+
+                        var json_obj = {
+                            entries: entries
+                        };
+
+                        res.status(200).send(json_obj);
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));

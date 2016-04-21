@@ -63,7 +63,7 @@ module.exports = {
         /*
          * HTTP GET: readdir/read/stat/follow operations
          */
-        router.get('*', function(req, res) {
+        var r_get = function(req, res) {
             var options = req.query;
             var path = req.target;
             var ug = req.ug;
@@ -75,6 +75,22 @@ module.exports = {
                 try {
                     var ret = syndicate.statvfs(ug);
                     res.status(200).send(ret);
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.statvfs !== undefined) {
+                // statvfs_async: ?statvfs_async
+                try {
+                    syndicate.statvfs_async(ug, function(err, ret) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send(ret);
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -95,6 +111,7 @@ module.exports = {
                         if(err) {
                             console.error("Exception occured : " + err);
                             res.status(500).send(make_error_object_async(err));
+                            return;
                         }
 
                         res.status(200).send(stat);                        
@@ -122,6 +139,7 @@ module.exports = {
                         if(err) {
                             console.error("Exception occured : " + err);
                             res.status(500).send(make_error_object_async(err));
+                            return;
                         }
 
                         var json_obj = {
@@ -147,6 +165,26 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.getxattr_async !== undefined) {
+                // getxattr_async: ?getxattr_async&key='name'
+                var key = options.key;
+                try {
+                    syndicate.get_xattr_async(ug, path, key, function(err, xattr) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        var json_obj = {
+                            value: xattr
+                        };
+                        res.status(200).send(json_obj);
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             } else if(options.listxattr !== undefined) {
                 // listxattr: ?listxattr
                 try {
@@ -155,6 +193,25 @@ module.exports = {
                         keys: xattrs
                     };
                     res.status(200).send(json_obj);
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.listxattr_async !== undefined) {
+                // listxattr_async: ?listxattr_async
+                try {
+                    syndicate.list_xattr_async(ug, path, function(err, xattrs) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        var json_obj = {
+                            keys: xattrs
+                        };
+                        res.status(200).send(json_obj);
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -222,6 +279,34 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.open_async !== undefined) {
+                // open_async: ?open_async&flag='r'
+                var flag = options.flag || 'r';
+                var newFd = g_fd++;
+                try {
+                    syndicate.open_async(ug, path, flag, function(err, fh) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        var json_obj = {
+                            fd: newFd
+                        };
+                        res.status(200).send(json_obj);
+
+                        // add to cache
+                        if( flag === 'r' ) {
+                            rfdCache.set(newFd, fh);
+                        } else {
+                            wfdCache.set(newFd, fh);
+                        }
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             } else if(options.checkopen !== undefined) {
                 // checkopen: ?checkopen&fd=fd
                 try {
@@ -254,12 +339,14 @@ module.exports = {
             } else {
                 res.status(403).send();
             }
-        });
+        };
+
+        router.get('*', r_get);
 
         /*
          * HTTP POST: write/mkdir operations
          */
-        router.post('*', function(req, res) {
+        var r_post = function(req, res) {
             var options = req.query;
             var path = req.target;
             var ug = req.ug;
@@ -276,6 +363,23 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.mkdir_async !== undefined) {
+                // mkdir_async: ?mkdir_async&mode=777
+                var mode = req.mode;
+                try {
+                    syndicate.mkdir_async(ug, path, mode, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             } else if(options.setxattr !== undefined) {
                 // setxattr: ?setxattr&key='name'&value='value'
                 var key = req.key;
@@ -283,6 +387,24 @@ module.exports = {
                 try {
                     syndicate.set_xattr(ug, path, key, val);
                     res.status(200).send();
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.setxattr_async !== undefined) {
+                // setxattr_async: ?setxattr_async&key='name'&value='value'
+                var key = req.key;
+                var value = req.value;
+                try {
+                    syndicate.set_xattr_async(ug, path, key, val, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -382,6 +504,23 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.rename_async !== undefined) {
+                // rename_async: ?rename_async&to='to_filename'
+                var to_name = req.to;
+                try {
+                    syndicate.rename_async(ug, path, to_name, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             /*
             } else if(options.truncate !== undefined) {
                 // truncate: ?truncate&offset=offset
@@ -392,150 +531,19 @@ module.exports = {
             } else {
                 res.status(403).send();
             }
-        });
+        };
+
+        router.post('*', r_post);
 
         /*
          * HTTP PUT: write operations
          */
-        router.put('*', function(req, res) {
-            var options = req.query;
-            var path = req.target;
-            var ug = req.ug;
-            var rfdCache = req.rfdCache;
-            var wfdCache = req.wfdCache;
-
-            if(options.mkdir !== undefined) {
-                // mkdir: ?mkdir&mode=777
-                var mode = req.mode;
-                try {
-                    syndicate.mkdir(ug, path, mode);
-                    res.status(200).send();
-                } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
-                }
-            } else if(options.setxattr !== undefined) {
-                // setxattr: ?setxattr&key='name'&value='value'
-                var key = req.key;
-                var value = req.value;
-                try {
-                    syndicate.set_xattr(ug, path, key, val);
-                    res.status(200).send();
-                } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
-                }
-            } else if(options.write !== undefined) {
-                // write: ?write&fd=fd&offset=offset&len=len
-                var offset = Number(options.offset) || 0;
-                var len = Number(options.len) || 0;
-                try {
-                    if(options.fd === undefined) {
-                        // stateless
-                        var fh = syndicate.open(ug, path, 'w');
-                        if(offset !== 0) {
-                            var new_offset = syndicate.seek(ug, fh, offset);
-                            if(new_offset != offset) {
-                                res.status(200).send();
-                            }
-                        }
-
-                        stream.on('data', function(chunk) {
-                            syndicate.write(ug, fh, chunk);
-                        });
-
-                        res.status(200).send();
-                        syndicate.close(ug, fh);
-                    } else {
-                        // using the fd
-                        // stateful
-                        var fd = options.fd;
-                        var fh = wfdCache.get(fd);
-                        if( fh === undefined ) {
-                            throw "unable to find a file handle for " + fd;
-                        }
-
-                        var new_offset = syndicate.seek(ug, fh, offset);
-                        if(new_offset != offset) {
-                            res.status(200).send(new Buffer(0));
-                        }
-
-                        stream.on('data', function(chunk) {
-                            syndicate.write(ug, fh, chunk);
-                        });
-                        res.status(200).send();
-
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
-                    }
-                } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
-                }
-            } else if(options.extendttl !== undefined) {
-                // extendttl: ?extendttl&fd=fd
-                try {
-                    if(options.fd === undefined) {
-                        throw "fd is not given";
-                    }
-
-                    // using the fd
-                    // stateful
-                    var fd = options.fd;
-                    var rfh = rfdCache.get(fd);
-                    var wfh = wfdCache.get(fd);
-                    if( rfh === undefined && wfh === undefined ) {
-                        throw "could not find a file handle"
-                    }
-
-                    if( rfh !== undefined ) {
-                        // extend cache's ttl
-                        rfdCache.ttl(fd);
-                    }
-
-                    if( wfh !== undefined ) {
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
-                    }
-
-                    res.status(200).send();
-                } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
-                }
-            /*
-            } else if(options.utimes !== undefined) {
-                // utimes: ?utimes&time=new_time
-                syndicatefs.utimes(req.target, options, function(err, data) {
-                    res.send(err || data);
-                });
-            */
-            } else if(options.rename !== undefined) {
-                // rename: ?rename&to='to_filename'
-                var to_name = req.to;
-                try {
-                    syndicate.rename(ug, path, to_name);
-                    res.status(200).send();
-                } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
-                }
-            /*
-            } else if(options.truncate !== undefined) {
-                // truncate: ?truncate&offset=offset
-                syndicatefs.truncate(req.target, options, function(err, data) {
-                    res.send(err || data);
-                });
-            */
-            } else {
-                res.status(403).send();
-            }
-        });
+        router.put('*', r_post);
 
         /*
          * HTTP DELETE: unlink operations
          */
-        router.delete('*', function(req, res) {
+        var r_delete = function(req, res) {
             var options = req.query;
             var path = req.target;
             var ug = req.ug;
@@ -551,11 +559,43 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
+            } else if(options.rmdir_async !== undefined) {
+                // rmdir_async: ?rmdir_async
+                try {
+                    syndicate.rmdir_async(ug, path, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
             } else if(options.unlink !== undefined) {
                 // unlink: ?unlink
                 try {
                     syndicate.unlink(ug, path);
                     res.status(200).send();
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.unlink_async !== undefined) {
+                // unlink_async: ?unlink_async
+                try {
+                    syndicate.unlink_async(ug, path, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -566,6 +606,23 @@ module.exports = {
                 try {
                     syndicate.remove_xattr(ug, path, key);
                     res.status(200).send();
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.rmxattr_async !== undefined) {
+                // rmxattr_async: ?rmxattr_async&key='name'
+                var key = req.key;
+                try {
+                    syndicate.remove_xattr_async(ug, path, key, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
@@ -596,10 +653,45 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));             
                 }
+            } else if(options.close_async !== undefined) {
+                // close_async: ?close_async&fd=fd
+                var fd = options.fd;
+                try {
+                    var fh;
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if( rfh === undefined && wfh === undefined ) {
+                        throw "unable to find a file handle for " + fd;
+                    }
+
+                    if( rfh !== undefined ) {
+                        fh = rfh;
+                        rfdCache.del(fd);
+                    }
+                    if( wfh !== undefined ) {
+                        fh = wfh;
+                        wfdCache.del(fd);
+                    }
+
+                    syndicate.close_async(ug, fh, function(err, data) {
+                        if(err) {
+                            console.error("Exception occured : " + err);
+                            res.status(500).send(make_error_object_async(err));
+                            return;
+                        }
+
+                        res.status(200).send();
+                    });
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));             
+                }
             } else {
                 res.status(403).send();
             }
-        });
+        };
+
+        router.delete('*', r_delete);
         return router;
     }
 };

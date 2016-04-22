@@ -79,7 +79,7 @@ module.exports = {
                     console.error("Exception occured : " + ex);
                     res.status(500).send(make_error_object(ex));
                 }
-            } else if(options.statvfs !== undefined) {
+            } else if(options.statvfs_async !== undefined) {
                 // statvfs_async: ?statvfs_async
                 try {
                     syndicate.statvfs_async(ug, function(err, ret) {
@@ -250,6 +250,118 @@ module.exports = {
 
                         var buffer = syndicate.read(ug, fh, len);
                         res.status(200).send(buffer);
+
+                        // extend cache's ttl
+                        rfdCache.ttl(fd);
+                    }
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.read_async !== undefined) {
+                // read_async: ?read_async&fd=fd&offset=offset&len=len
+                var offset = Number(options.offset) || 0;
+                var len = Number(options.len) || 0;
+                try {
+                    if(options.fd === undefined) {
+                        // stateless
+                        syndicate.open_async(ug, path, 'r', function(err, fh) {
+                            if(err) {
+                                console.error("Exception occured : " + err);
+                                res.status(500).send(make_error_object_async(err));
+                                return;
+                            }
+
+                            if(offset !== 0) {
+                                syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+
+                                    if(new_offset != offset) {
+                                        res.status(200).send(new Buffer(0));
+                                        return;
+                                    }
+
+                                    syndicate.read_async(ug, fh, len, function(err, buffer) {
+                                        if(err) {
+                                            console.error("Exception occured : " + err);
+                                            res.status(500).send(make_error_object_async(err));
+                                            return;
+                                        }
+
+                                        syndicate.close_async(ug, fh, function(err, data) {
+                                            if(err) {
+                                                console.error("Exception occured : " + err);
+                                                res.status(500).send(make_error_object_async(err));
+                                                return;
+                                            }
+
+                                            res.status(200).send(buffer);
+                                        });
+                                    });
+                                });
+                            } else {
+                                syndicate.read_async(ug, fh, len, function(err, buffer) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+
+                                    syndicate.close_async(ug, fh, function(err, data) {
+                                        if(err) {
+                                            console.error("Exception occured : " + err);
+                                            res.status(500).send(make_error_object_async(err));
+                                            return;
+                                        }
+
+                                        res.status(200).send(buffer);
+                                    });
+                                });
+                            }
+                        });
+                    } else {
+                        // using the fd
+                        // stateful
+                        var fd = options.fd;
+                        var fh = rfdCache.get(fd);
+                        if( fh === undefined ) {
+                            throw "unable to find a file handle for " + fd;
+                        }
+
+                        syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
+                            if(err) {
+                                console.error("Exception occured : " + err);
+                                res.status(500).send(make_error_object_async(err));
+                                return;
+                            }
+
+                            if(new_offset != offset) {
+                                res.status(200).send(new Buffer(0));
+                                return;
+                            }
+
+                            syndicate.read_async(ug, fh, len, function(err, buffer) {
+                                if(err) {
+                                    console.error("Exception occured : " + err);
+                                    res.status(500).send(make_error_object_async(err));
+                                    return;
+                                }
+
+                                syndicate.close_async(ug, fh, function(err, data) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+
+                                    res.status(200).send(buffer);
+                                });
+                            });
+                        });
 
                         // extend cache's ttl
                         rfdCache.ttl(fd);
@@ -448,6 +560,124 @@ module.exports = {
                             syndicate.write(ug, fh, chunk);
                         });
                         res.status(200).send();
+
+                        // extend cache's ttl
+                        wfdCache.ttl(fd);
+                    }
+                } catch (ex) {
+                    console.error("Exception occured : " + ex);
+                    res.status(500).send(make_error_object(ex));
+                }
+            } else if(options.write_async !== undefined) {
+                // write_async: ?write_async&fd=fd&offset=offset&len=len
+                var offset = Number(options.offset) || 0;
+                var len = Number(options.len) || 0;
+                try {
+                    if(options.fd === undefined) {
+                        // stateless
+                        syndicate.open_async(ug, path, 'w', function(err, fh) {
+                            if(err) {
+                                console.error("Exception occured : " + err);
+                                res.status(500).send(make_error_object_async(err));
+                                return;
+                            }
+
+                            if(offset !== 0) {
+                                syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+
+                                    if(new_offset != offset) {
+                                        res.status(200).send(new Buffer(0));
+                                        return;
+                                    }
+
+                                    stream.on('data', function(chunk) {
+                                        syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                            if(err) {
+                                                console.error("Exception occured : " + err);
+                                                res.status(500).send(make_error_object_async(err));
+                                                return;
+                                            }
+                                        });
+                                    });
+
+                                    syndicate.close_async(ug, fh, function(err, data) {
+                                        if(err) {
+                                            console.error("Exception occured : " + err);
+                                            res.status(500).send(make_error_object_async(err));
+                                            return;
+                                        }
+
+                                        res.status(200).send();
+                                    });
+                                });
+                            } else {
+                                stream.on('data', function(chunk) {
+                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                        if(err) {
+                                            console.error("Exception occured : " + err);
+                                            res.status(500).send(make_error_object_async(err));
+                                            return;
+                                        }
+                                    });
+                                });
+
+                                syndicate.close_async(ug, fh, function(err, data) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+
+                                    res.status(200).send();
+                                });
+                            }
+                        });
+                    } else {
+                        // using the fd
+                        // stateful
+                        var fd = options.fd;
+                        var fh = wfdCache.get(fd);
+                        if( fh === undefined ) {
+                            throw "unable to find a file handle for " + fd;
+                        }
+
+                        syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
+                            if(err) {
+                                console.error("Exception occured : " + err);
+                                res.status(500).send(make_error_object_async(err));
+                                return;
+                            }
+
+                            if(new_offset != offset) {
+                                res.status(200).send(new Buffer(0));
+                                return;
+                            }
+
+                            stream.on('data', function(chunk) {
+                                syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                    if(err) {
+                                        console.error("Exception occured : " + err);
+                                        res.status(500).send(make_error_object_async(err));
+                                        return;
+                                    }
+                                });
+                            });
+
+                            syndicate.close_async(ug, fh, function(err, data) {
+                                if(err) {
+                                    console.error("Exception occured : " + err);
+                                    res.status(500).send(make_error_object_async(err));
+                                    return;
+                                }
+
+                                res.status(200).send();
+                            });
+                        });
 
                         // extend cache's ttl
                         wfdCache.ttl(fd);

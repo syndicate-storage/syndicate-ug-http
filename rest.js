@@ -52,7 +52,7 @@ function check_file_not_exist_error(ex) {
 
 module.exports = {
     init: function(param) {
-        var opts = syndicate.create_opts(param.user, param.volume, param.gateway, param.anonymous);
+        var opts = syndicate.create_opts(param.user, param.volume, param.gateway, param.anonymous, param.debug_level);
         // init UG
         return syndicate.init(opts);
     },

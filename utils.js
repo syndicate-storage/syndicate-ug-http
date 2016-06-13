@@ -23,6 +23,7 @@ module.exports = {
             user: "",
             volume: "",
             gateway: "",
+            debug_level: 0,
             anonymous: false,
             port: 8888,
         };
@@ -55,6 +56,20 @@ module.exports = {
                 continue;
             }
 
+            if(args[i] === "-d") {
+                if(i+1 < args.length) {
+                    options.debug_level = parseInt(args[i+1]);
+                    i++;
+                }
+                continue;
+            }
+
+            // parse pattern "-d2"
+            var debug_level_match = args[i].match(/^(-d)(\d+)/gi);
+            if(debug_level_match !== null) {
+                options.debug_level = parseInt(debug_level_match[1])
+            }
+
             if(args[i] === "--anonymous" || args[i] === "-A") {
                 options.anonymous = true;
                 continue;
@@ -72,4 +87,3 @@ module.exports = {
         return options;
     }
 };
-

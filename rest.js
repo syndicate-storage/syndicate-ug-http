@@ -23,17 +23,31 @@ var syndicate = require('syndicate-drive');
 var g_fd = 1;
 
 function make_error_object(ex) {
-    return {
-        name: ex.name,
-        message: ex.message,
-    };
+    if(ex instanceof Error) {
+        return {
+            name: ex.name,
+            message: ex.message,
+        };
+    } else {
+        return {
+            name: "error",
+            message: ex,
+        };
+    }
 }
 
-function make_error_object_async(err) {
-    return {
-        name: "error",
-        message: err,
-    };
+function check_file_not_exist_error(ex) {
+    if(ex instanceof Error) {
+        if(ex.message.indexOf("No such file or directory") >= 0) {
+            return true;
+        }
+    } else {
+        if(ex.indexOf("No such file or directory") >= 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 module.exports = {
@@ -85,7 +99,7 @@ module.exports = {
                     syndicate.statvfs_async(ug, function(err, ret) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -101,20 +115,28 @@ module.exports = {
                     var ret = syndicate.stat_raw(ug, path);
                     res.status(200).send(ret);
                 } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
+                    if(check_file_not_exist_error(ex)) {
+                        res.status(404).send(make_error_object(ex));
+                    } else {
+                        console.error("Exception occured : " + ex);
+                        res.status(500).send(make_error_object(ex));
+                    }
                 }
             } else if(options.stat_async !== undefined) {
                 // stat_async: ?stat_async
                 try {
                     syndicate.stat_raw_async(ug, path, function(err, stat) {
                         if(err) {
-                            console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            if(check_file_not_exist_error(err)) {
+                                res.status(404).send(make_error_object(err));
+                            } else {
+                                console.error("Exception occured : " + err);
+                                res.status(500).send(make_error_object(err));
+                            }
                             return;
                         }
 
-                        res.status(200).send(stat);                        
+                        res.status(200).send(stat);
                     });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
@@ -138,7 +160,7 @@ module.exports = {
                     syndicate.list_dir_async(ug, path, function(err, entries) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -172,7 +194,7 @@ module.exports = {
                     syndicate.get_xattr_async(ug, path, key, function(err, xattr) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -203,7 +225,7 @@ module.exports = {
                     syndicate.list_xattr_async(ug, path, function(err, xattrs) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -268,7 +290,7 @@ module.exports = {
                         syndicate.open_async(ug, path, 'r', function(err, fh) {
                             if(err) {
                                 console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object_async(err));
+                                res.status(500).send(make_error_object(err));
                                 return;
                             }
 
@@ -276,7 +298,7 @@ module.exports = {
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
 
@@ -288,14 +310,14 @@ module.exports = {
                                     syndicate.read_async(ug, fh, len, function(err, buffer) {
                                         if(err) {
                                             console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object_async(err));
+                                            res.status(500).send(make_error_object(err));
                                             return;
                                         }
 
                                         syndicate.close_async(ug, fh, function(err, data) {
                                             if(err) {
                                                 console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object_async(err));
+                                                res.status(500).send(make_error_object(err));
                                                 return;
                                             }
 
@@ -307,14 +329,14 @@ module.exports = {
                                 syndicate.read_async(ug, fh, len, function(err, buffer) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
 
                                     syndicate.close_async(ug, fh, function(err, data) {
                                         if(err) {
                                             console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object_async(err));
+                                            res.status(500).send(make_error_object(err));
                                             return;
                                         }
 
@@ -335,7 +357,7 @@ module.exports = {
                         syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                             if(err) {
                                 console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object_async(err));
+                                res.status(500).send(make_error_object(err));
                                 return;
                             }
 
@@ -347,14 +369,14 @@ module.exports = {
                             syndicate.read_async(ug, fh, len, function(err, buffer) {
                                 if(err) {
                                     console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object_async(err));
+                                    res.status(500).send(make_error_object(err));
                                     return;
                                 }
 
                                 syndicate.close_async(ug, fh, function(err, data) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
 
@@ -399,7 +421,7 @@ module.exports = {
                     syndicate.open_async(ug, path, flag, function(err, fh) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -482,7 +504,7 @@ module.exports = {
                     syndicate.mkdir_async(ug, path, mode, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -511,7 +533,7 @@ module.exports = {
                     syndicate.set_xattr_async(ug, path, key, val, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -578,7 +600,7 @@ module.exports = {
                         syndicate.open_async(ug, path, 'w', function(err, fh) {
                             if(err) {
                                 console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object_async(err));
+                                res.status(500).send(make_error_object(err));
                                 return;
                             }
 
@@ -586,7 +608,7 @@ module.exports = {
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
 
@@ -599,7 +621,7 @@ module.exports = {
                                         syndicate.write_async(ug, fh, chunk, function(err, data) {
                                             if(err) {
                                                 console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object_async(err));
+                                                res.status(500).send(make_error_object(err));
                                                 return;
                                             }
                                         });
@@ -608,7 +630,7 @@ module.exports = {
                                     syndicate.close_async(ug, fh, function(err, data) {
                                         if(err) {
                                             console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object_async(err));
+                                            res.status(500).send(make_error_object(err));
                                             return;
                                         }
 
@@ -620,7 +642,7 @@ module.exports = {
                                     syndicate.write_async(ug, fh, chunk, function(err, data) {
                                         if(err) {
                                             console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object_async(err));
+                                            res.status(500).send(make_error_object(err));
                                             return;
                                         }
                                     });
@@ -629,7 +651,7 @@ module.exports = {
                                 syndicate.close_async(ug, fh, function(err, data) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
 
@@ -649,7 +671,7 @@ module.exports = {
                         syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                             if(err) {
                                 console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object_async(err));
+                                res.status(500).send(make_error_object(err));
                                 return;
                             }
 
@@ -662,7 +684,7 @@ module.exports = {
                                 syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
                                         console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object_async(err));
+                                        res.status(500).send(make_error_object(err));
                                         return;
                                     }
                                 });
@@ -671,7 +693,7 @@ module.exports = {
                             syndicate.close_async(ug, fh, function(err, data) {
                                 if(err) {
                                     console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object_async(err));
+                                    res.status(500).send(make_error_object(err));
                                     return;
                                 }
 
@@ -741,7 +763,7 @@ module.exports = {
                     syndicate.rename_async(ug, path, to_name, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -795,7 +817,7 @@ module.exports = {
                     syndicate.rmdir_async(ug, path, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -820,7 +842,7 @@ module.exports = {
                     syndicate.unlink_async(ug, path, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -847,7 +869,7 @@ module.exports = {
                     syndicate.remove_xattr_async(ug, path, key, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -881,7 +903,7 @@ module.exports = {
                     res.status(200).send();
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));             
+                    res.status(500).send(make_error_object(ex));
                 }
             } else if(options.close_async !== undefined) {
                 // close_async: ?close_async&fd=fd
@@ -906,7 +928,7 @@ module.exports = {
                     syndicate.close_async(ug, fh, function(err, data) {
                         if(err) {
                             console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object_async(err));
+                            res.status(500).send(make_error_object(err));
                             return;
                         }
 
@@ -914,7 +936,7 @@ module.exports = {
                     });
                 } catch (ex) {
                     console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));             
+                    res.status(500).send(make_error_object(ex));
                 }
             } else {
                 res.status(403).send();

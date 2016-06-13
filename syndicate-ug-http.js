@@ -26,7 +26,7 @@ var app = express();
     if (cluster.isMaster) {
         console.log("Syndicate-UG-HTTP start");
         var cpuCount = require('os').cpus().length;
-        
+
         //for(var i=0;i<cpuCount;i++){
             cluster.fork();
         //}
@@ -59,7 +59,7 @@ var app = express();
                 useClones: false
             });
 
-            rfdCache.on("expired", function(key, value) {
+            wfdCache.on("expired", function(key, value) {
                 console.log("closing expired file handle for read - " + key);
                 rest.safeclose(ug, value);
             });

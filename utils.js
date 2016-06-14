@@ -68,6 +68,7 @@ module.exports = {
             var debug_level_match = args[i].match(/^(-d)(\d+)/gi);
             if(debug_level_match !== null) {
                 options.debug_level = parseInt(debug_level_match[1])
+                continue;
             }
 
             if(args[i] === "--anonymous" || args[i] === "-A") {

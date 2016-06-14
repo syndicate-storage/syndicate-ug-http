@@ -36,18 +36,28 @@ function make_error_object(ex) {
     }
 }
 
-function check_file_not_exist_error(ex) {
-    if(ex instanceof Error) {
-        if(ex.message.indexOf("No such file or directory") >= 0) {
-            return true;
-        }
-    } else {
-        if(ex.indexOf("No such file or directory") >= 0) {
-            return true;
-        }
-    }
+function return_data(res, data) {
+    // return with HTTP 200 code
+    res.status(200).send(data);
+}
 
-    return false;
+function return_error(res, ex) {
+    if(ex instanceof syndicate.syndicate_error) {
+        if(ex.extra === 2) {
+            // ENOENT
+            res.status(404).send(make_error_object(ex));
+            console.error("Respond with error code 404 > " + ex);
+        } else {
+            res.status(500).send(make_error_object(ex));
+            console.error("Respond with error code 500 > " + ex);
+        }
+    } else if(ex instanceof Error) {
+        res.status(500).send(make_error_object(ex));
+        console.error("Respond with error code 500 > " + ex);
+    } else {
+        res.status(500).send(make_error_object(ex));
+        console.error("Respond with error code 500 > " + ex);
+    }
 }
 
 module.exports = {
@@ -88,63 +98,45 @@ module.exports = {
                 // statvfs: ?statvfs
                 try {
                     var ret = syndicate.statvfs(ug);
-                    res.status(200).send(ret);
+                    return_data(res, ret);
                 } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
+                    return_error(res, ex);
                 }
             } else if(options.statvfs_async !== undefined) {
                 // statvfs_async: ?statvfs_async
                 try {
-                    syndicate.statvfs_async(ug, function(err, ret) {
+                    syndicate.statvfs_async(ug, function(err, statvfs) {
                         if(err) {
-                            console.error("Exception occured : " + err);
-                            res.status(500).send(make_error_object(err));
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send(ret);
+                        return_data(res, statvfs);
                     });
                 } catch (ex) {
-                    console.error("Exception occured : " + ex);
-                    res.status(500).send(make_error_object(ex));
+                    return_error(res, ex);
                 }
             } else if(options.stat !== undefined) {
                 // stat: ?stat
                 try {
                     var ret = syndicate.stat_raw(ug, path);
-                    res.status(200).send(ret);
+                    return_data(res, ret);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.stat_async !== undefined) {
                 // stat_async: ?stat_async
                 try {
                     syndicate.stat_raw_async(ug, path, function(err, stat) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send(stat);
+                        return_data(res, stat);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.listdir !== undefined) {
                 // listdir: ?listdir
@@ -153,26 +145,16 @@ module.exports = {
                     var json_obj = {
                         entries: entries
                     };
-                    res.status(200).send(json_obj);
+                    return_data(res, json_obj);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.listdir_async !== undefined) {
                 // listdir_async: ?listdir_async
                 try {
                     syndicate.list_dir_async(ug, path, function(err, entries) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
@@ -180,15 +162,10 @@ module.exports = {
                             entries: entries
                         };
 
-                        res.status(200).send(json_obj);
+                        return_data(res, json_obj);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.getxattr !== undefined) {
                 // getxattr: ?getxattr&key='name'
@@ -198,14 +175,9 @@ module.exports = {
                     var json_obj = {
                         value: xattr
                     };
-                    res.status(200).send(json_obj);
+                    return_data(res, json_obj);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.getxattr_async !== undefined) {
                 // getxattr_async: ?getxattr_async&key='name'
@@ -213,27 +185,18 @@ module.exports = {
                 try {
                     syndicate.get_xattr_async(ug, path, key, function(err, xattr) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
                         var json_obj = {
                             value: xattr
                         };
-                        res.status(200).send(json_obj);
+
+                        return_data(res, json_obj);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.listxattr !== undefined) {
                 // listxattr: ?listxattr
@@ -242,41 +205,27 @@ module.exports = {
                     var json_obj = {
                         keys: xattrs
                     };
-                    res.status(200).send(json_obj);
+                    return_data(res, json_obj);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.listxattr_async !== undefined) {
                 // listxattr_async: ?listxattr_async
                 try {
                     syndicate.list_xattr_async(ug, path, function(err, xattrs) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
                         var json_obj = {
                             keys: xattrs
                         };
-                        res.status(200).send(json_obj);
+
+                        return_data(res, json_obj);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.read !== undefined) {
                 // read: ?read&fd=fd&offset=offset&len=len
@@ -289,40 +238,38 @@ module.exports = {
                         if(offset !== 0) {
                             var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset != offset) {
-                                res.status(200).send(new Buffer(0));
+                                return_data(res, new Buffer(0));
+                                syndicate.close(ug, fh);
+                                return;
                             }
                         }
 
                         var buffer = syndicate.read(ug, fh, len);
-                        res.status(200).send(buffer);
+                        return_data(res, buffer);
                         syndicate.close(ug, fh);
                     } else {
                         // using the fd
                         // stateful
                         var fd = options.fd;
                         var fh = rfdCache.get(fd);
-                        if( fh === undefined ) {
-                            throw "unable to find a file handle for " + fd;
+                        if(fh === undefined) {
+                            throw new Error("unable to find a file handle for " + fd);
                         }
-
-                        var new_offset = syndicate.seek(ug, fh, offset);
-                        if(new_offset != offset) {
-                            res.status(200).send(new Buffer(0));
-                        }
-
-                        var buffer = syndicate.read(ug, fh, len);
-                        res.status(200).send(buffer);
 
                         // extend cache's ttl
                         rfdCache.ttl(fd);
+
+                        var new_offset = syndicate.seek(ug, fh, offset);
+                        if(new_offset != offset) {
+                            return_data(res, new Buffer(0));
+                            return;
+                        }
+
+                        var buffer = syndicate.read(ug, fh, len);
+                        return_data(res, buffer);
                     }
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.read_async !== undefined) {
                 // read_async: ?read_async&fd=fd&offset=offset&len=len
@@ -333,82 +280,52 @@ module.exports = {
                         // stateless
                         syndicate.open_async(ug, path, 'r', function(err, fh) {
                             if(err) {
-                                if(check_file_not_exist_error(err)) {
-                                    res.status(404).send(make_error_object(err));
-                                } else {
-                                    console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object(err));
-                                }
+                                return_error(res, err);
                                 return;
                             }
 
                             if(offset !== 0) {
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
 
                                     if(new_offset != offset) {
-                                        res.status(200).send(new Buffer(0));
+                                        return_data(res, new Buffer(0));
                                         return;
                                     }
 
                                     syndicate.read_async(ug, fh, len, function(err, buffer) {
                                         if(err) {
-                                            if(check_file_not_exist_error(err)) {
-                                                res.status(404).send(make_error_object(err));
-                                            } else {
-                                                console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object(err));
-                                            }
+                                            return_error(res, err);
                                             return;
                                         }
 
                                         syndicate.close_async(ug, fh, function(err, data) {
                                             if(err) {
-                                                if(check_file_not_exist_error(err)) {
-                                                    res.status(404).send(make_error_object(err));
-                                                } else {
-                                                    console.error("Exception occured : " + err);
-                                                    res.status(500).send(make_error_object(err));
-                                                }
+                                                return_error(res, err);
                                                 return;
                                             }
 
-                                            res.status(200).send(buffer);
+                                            return_data(res, buffer);
                                         });
                                     });
                                 });
                             } else {
                                 syndicate.read_async(ug, fh, len, function(err, buffer) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
 
                                     syndicate.close_async(ug, fh, function(err, data) {
                                         if(err) {
-                                            if(check_file_not_exist_error(err)) {
-                                                res.status(404).send(make_error_object(err));
-                                            } else {
-                                                console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object(err));
-                                            }
+                                            return_error(res, err);
                                             return;
                                         }
 
-                                        res.status(200).send(buffer);
+                                        return_data(res, buffer);
                                     });
                                 });
                             }
@@ -418,63 +335,43 @@ module.exports = {
                         // stateful
                         var fd = options.fd;
                         var fh = rfdCache.get(fd);
-                        if( fh === undefined ) {
-                            throw "unable to find a file handle for " + fd;
+                        if(fh === undefined) {
+                            throw new Error("unable to find a file handle for " + fd);
                         }
+
+                        // extend cache's ttl
+                        rfdCache.ttl(fd);
 
                         syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                             if(err) {
-                                if(check_file_not_exist_error(err)) {
-                                    res.status(404).send(make_error_object(err));
-                                } else {
-                                    console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object(err));
-                                }
+                                return_error(res, err);
                                 return;
                             }
 
                             if(new_offset != offset) {
-                                res.status(200).send(new Buffer(0));
+                                return_data(res, new Buffer(0));
                                 return;
                             }
 
                             syndicate.read_async(ug, fh, len, function(err, buffer) {
                                 if(err) {
-                                    if(check_file_not_exist_error(err)) {
-                                        res.status(404).send(make_error_object(err));
-                                    } else {
-                                        console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object(err));
-                                    }
+                                    return_error(res, err);
                                     return;
                                 }
 
                                 syndicate.close_async(ug, fh, function(err, data) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
 
-                                    res.status(200).send(buffer);
+                                    return_data(res, buffer);
                                 });
                             });
                         });
-
-                        // extend cache's ttl
-                        rfdCache.ttl(fd);
                     }
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.open !== undefined) {
                 // open: ?open&flag='r'
@@ -485,21 +382,16 @@ module.exports = {
                     var json_obj = {
                         fd: newFd
                     };
-                    res.status(200).send(json_obj);
+                    return_data(res, json_obj);
 
                     // add to cache
-                    if( flag === 'r' ) {
+                    if(flag === 'r') {
                         rfdCache.set(newFd, fh);
                     } else {
                         wfdCache.set(newFd, fh);
                     }
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.open_async !== undefined) {
                 // open_async: ?open_async&flag='r'
@@ -508,40 +400,30 @@ module.exports = {
                 try {
                     syndicate.open_async(ug, path, flag, function(err, fh) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
                         var json_obj = {
                             fd: newFd
                         };
-                        res.status(200).send(json_obj);
+                        return_data(res, json_obj);
 
                         // add to cache
-                        if( flag === 'r' ) {
+                        if(flag === 'r') {
                             rfdCache.set(newFd, fh);
                         } else {
                             wfdCache.set(newFd, fh);
                         }
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.checkopen !== undefined) {
                 // checkopen: ?checkopen&fd=fd
                 try {
                     if(options.fd === undefined) {
-                        throw "fd is not given";
+                        throw new Error("fd is not given");
                     }
 
                     // using the fd
@@ -551,7 +433,7 @@ module.exports = {
                     var wfh = wfdCache.get(fd);
 
                     var opened = false;
-                    if( rfh === undefined && wfh === undefined ) {
+                    if(rfh === undefined && wfh === undefined) {
                         opened = false;
                     } else {
                         opened = true;
@@ -561,14 +443,9 @@ module.exports = {
                         opened: opened
                     };
 
-                    res.status(200).send(json_obj);
+                    return_data(res, json_obj);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else {
                 res.status(403).send();
@@ -592,14 +469,9 @@ module.exports = {
                 var mode = req.mode;
                 try {
                     syndicate.mkdir(ug, path, mode);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.mkdir_async !== undefined) {
                 // mkdir_async: ?mkdir_async&mode=777
@@ -607,24 +479,14 @@ module.exports = {
                 try {
                     syndicate.mkdir_async(ug, path, mode, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.setxattr !== undefined) {
                 // setxattr: ?setxattr&key='name'&value='value'
@@ -632,14 +494,9 @@ module.exports = {
                 var value = req.value;
                 try {
                     syndicate.set_xattr(ug, path, key, val);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.setxattr_async !== undefined) {
                 // setxattr_async: ?setxattr_async&key='name'&value='value'
@@ -648,24 +505,14 @@ module.exports = {
                 try {
                     syndicate.set_xattr_async(ug, path, key, val, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.write !== undefined) {
                 // write: ?write&fd=fd&offset=offset&len=len
@@ -678,7 +525,9 @@ module.exports = {
                         if(offset !== 0) {
                             var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset != offset) {
-                                res.status(200).send();
+                                return_data(res, null);
+                                syndicate.close(ug, fh);
+                                return;
                             }
                         }
 
@@ -686,37 +535,33 @@ module.exports = {
                             syndicate.write(ug, fh, chunk);
                         });
 
-                        res.status(200).send();
+                        return_data(res, null);
                         syndicate.close(ug, fh);
                     } else {
                         // using the fd
                         // stateful
                         var fd = options.fd;
                         var fh = wfdCache.get(fd);
-                        if( fh === undefined ) {
-                            throw "unable to find a file handle for " + fd;
+                        if(fh === undefined) {
+                            throw new Error("unable to find a file handle for " + fd);
                         }
+
+                        // extend cache's ttl
+                        wfdCache.ttl(fd);
 
                         var new_offset = syndicate.seek(ug, fh, offset);
                         if(new_offset != offset) {
-                            res.status(200).send(new Buffer(0));
+                            return_data(res, new Buffer(0));
+                            return;
                         }
 
                         stream.on('data', function(chunk) {
                             syndicate.write(ug, fh, chunk);
                         });
-                        res.status(200).send();
-
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
+                        return_data(res, null);
                     }
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.write_async !== undefined) {
                 // write_async: ?write_async&fd=fd&offset=offset&len=len
@@ -727,41 +572,26 @@ module.exports = {
                         // stateless
                         syndicate.open_async(ug, path, 'w', function(err, fh) {
                             if(err) {
-                                if(check_file_not_exist_error(err)) {
-                                    res.status(404).send(make_error_object(err));
-                                } else {
-                                    console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object(err));
-                                }
+                                return_error(res, err);
                                 return;
                             }
 
                             if(offset !== 0) {
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
 
                                     if(new_offset != offset) {
-                                        res.status(200).send(new Buffer(0));
+                                        return_data(res, new Buffer(0));
                                         return;
                                     }
 
                                     stream.on('data', function(chunk) {
                                         syndicate.write_async(ug, fh, chunk, function(err, data) {
                                             if(err) {
-                                                if(check_file_not_exist_error(err)) {
-                                                    res.status(404).send(make_error_object(err));
-                                                } else {
-                                                    console.error("Exception occured : " + err);
-                                                    res.status(500).send(make_error_object(err));
-                                                }
+                                                return_error(res, err);
                                                 return;
                                             }
                                         });
@@ -769,28 +599,18 @@ module.exports = {
 
                                     syndicate.close_async(ug, fh, function(err, data) {
                                         if(err) {
-                                            if(check_file_not_exist_error(err)) {
-                                                res.status(404).send(make_error_object(err));
-                                            } else {
-                                                console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object(err));
-                                            }
+                                            return_error(res, err);
                                             return;
                                         }
 
-                                        res.status(200).send();
+                                        return_data(res, null);
                                     });
                                 });
                             } else {
                                 stream.on('data', function(chunk) {
                                     syndicate.write_async(ug, fh, chunk, function(err, data) {
                                         if(err) {
-                                            if(check_file_not_exist_error(err)) {
-                                                res.status(404).send(make_error_object(err));
-                                            } else {
-                                                console.error("Exception occured : " + err);
-                                                res.status(500).send(make_error_object(err));
-                                            }
+                                            return_error(res, err);
                                             return;
                                         }
                                     });
@@ -798,16 +618,11 @@ module.exports = {
 
                                 syndicate.close_async(ug, fh, function(err, data) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
 
-                                    res.status(200).send();
+                                    return_data(res, null);
                                 });
                             }
                         });
@@ -816,35 +631,28 @@ module.exports = {
                         // stateful
                         var fd = options.fd;
                         var fh = wfdCache.get(fd);
-                        if( fh === undefined ) {
-                            throw "unable to find a file handle for " + fd;
+                        if(fh === undefined) {
+                            throw new Error("unable to find a file handle for " + fd);
                         }
+
+                        // extend cache's ttl
+                        wfdCache.ttl(fd);
 
                         syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                             if(err) {
-                                if(check_file_not_exist_error(err)) {
-                                    res.status(404).send(make_error_object(err));
-                                } else {
-                                    console.error("Exception occured : " + err);
-                                    res.status(500).send(make_error_object(err));
-                                }
+                                return_error(res, err);
                                 return;
                             }
 
                             if(new_offset != offset) {
-                                res.status(200).send(new Buffer(0));
+                                return_data(res, new Buffer(0));
                                 return;
                             }
 
                             stream.on('data', function(chunk) {
                                 syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
-                                        if(check_file_not_exist_error(err)) {
-                                            res.status(404).send(make_error_object(err));
-                                        } else {
-                                            console.error("Exception occured : " + err);
-                                            res.status(500).send(make_error_object(err));
-                                        }
+                                        return_error(res, err);
                                         return;
                                     }
                                 });
@@ -852,35 +660,22 @@ module.exports = {
 
                             syndicate.close_async(ug, fh, function(err, data) {
                                 if(err) {
-                                    if(check_file_not_exist_error(err)) {
-                                        res.status(404).send(make_error_object(err));
-                                    } else {
-                                        console.error("Exception occured : " + err);
-                                        res.status(500).send(make_error_object(err));
-                                    }
+                                    return_error(res, err);
                                     return;
                                 }
 
-                                res.status(200).send();
+                                return_data(res, null);
                             });
                         });
-
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
                     }
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.extendttl !== undefined) {
                 // extendttl: ?extendttl&fd=fd
                 try {
                     if(options.fd === undefined) {
-                        throw "fd is not given";
+                        throw new Error("fd is not given");
                     }
 
                     // using the fd
@@ -888,34 +683,29 @@ module.exports = {
                     var fd = options.fd;
                     var rfh = rfdCache.get(fd);
                     var wfh = wfdCache.get(fd);
-                    if( rfh === undefined && wfh === undefined ) {
-                        throw "could not find a file handle"
+                    if(rfh === undefined && wfh === undefined) {
+                        throw new Error("could not find a file handle");
                     }
 
-                    if( rfh !== undefined ) {
+                    if(rfh !== undefined) {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
                     }
 
-                    if( wfh !== undefined ) {
+                    if(wfh !== undefined) {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
                     }
 
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.extendttl_async !== undefined) {
                 // extendttl_async: ?extendttl_async&fd=fd
                 try {
                     if(options.fd === undefined) {
-                        throw "fd is not given";
+                        throw new Error("fd is not given");
                     }
 
                     // using the fd
@@ -923,28 +713,23 @@ module.exports = {
                     var fd = options.fd;
                     var rfh = rfdCache.get(fd);
                     var wfh = wfdCache.get(fd);
-                    if( rfh === undefined && wfh === undefined ) {
-                        throw "could not find a file handle"
+                    if(rfh === undefined && wfh === undefined) {
+                        throw new Error("could not find a file handle");
                     }
 
-                    if( rfh !== undefined ) {
+                    if(rfh !== undefined) {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
                     }
 
-                    if( wfh !== undefined ) {
+                    if(wfh !== undefined) {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
                     }
 
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             /*
             } else if(options.utimes !== undefined) {
@@ -958,14 +743,9 @@ module.exports = {
                 var to_name = req.to;
                 try {
                     syndicate.rename(ug, path, to_name);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.rename_async !== undefined) {
                 // rename_async: ?rename_async&to='to_filename'
@@ -973,24 +753,14 @@ module.exports = {
                 try {
                     syndicate.rename_async(ug, path, to_name, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             /*
             } else if(options.truncate !== undefined) {
@@ -1025,89 +795,54 @@ module.exports = {
                 // rmdir: ?rmdir
                 try {
                     syndicate.rmdir(ug, path);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.rmdir_async !== undefined) {
                 // rmdir_async: ?rmdir_async
                 try {
                     syndicate.rmdir_async(ug, path, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.unlink !== undefined) {
                 // unlink: ?unlink
                 try {
                     syndicate.unlink(ug, path);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.unlink_async !== undefined) {
                 // unlink_async: ?unlink_async
                 try {
                     syndicate.unlink_async(ug, path, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.rmxattr !== undefined) {
                 // rmxattr: ?rmxattr&key='name'
                 var key = req.key;
                 try {
                     syndicate.remove_xattr(ug, path, key);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.rmxattr_async !== undefined) {
                 // rmxattr_async: ?rmxattr_async&key='name'
@@ -1115,24 +850,14 @@ module.exports = {
                 try {
                     syndicate.remove_xattr_async(ug, path, key, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.close !== undefined) {
                 // close: ?close&fd=fd
@@ -1141,28 +866,23 @@ module.exports = {
                     var fh;
                     var rfh = rfdCache.get(fd);
                     var wfh = wfdCache.get(fd);
-                    if( rfh === undefined && wfh === undefined ) {
-                        throw "unable to find a file handle for " + fd;
+                    if(rfh === undefined && wfh === undefined) {
+                        throw new Error("unable to find a file handle for " + fd);
                     }
 
-                    if( rfh !== undefined ) {
+                    if(rfh !== undefined) {
                         fh = rfh;
                         rfdCache.del(fd);
                     }
-                    if( wfh !== undefined ) {
+                    if(wfh !== undefined) {
                         fh = wfh;
                         wfdCache.del(fd);
                     }
 
                     syndicate.close(ug, fh);
-                    res.status(200).send();
+                    return_data(res, null);
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else if(options.close_async !== undefined) {
                 // close_async: ?close_async&fd=fd
@@ -1171,39 +891,29 @@ module.exports = {
                     var fh;
                     var rfh = rfdCache.get(fd);
                     var wfh = wfdCache.get(fd);
-                    if( rfh === undefined && wfh === undefined ) {
-                        throw "unable to find a file handle for " + fd;
+                    if(rfh === undefined && wfh === undefined) {
+                        throw new Error("unable to find a file handle for " + fd);
                     }
 
-                    if( rfh !== undefined ) {
+                    if(rfh !== undefined) {
                         fh = rfh;
                         rfdCache.del(fd);
                     }
-                    if( wfh !== undefined ) {
+                    if(wfh !== undefined) {
                         fh = wfh;
                         wfdCache.del(fd);
                     }
 
                     syndicate.close_async(ug, fh, function(err, data) {
                         if(err) {
-                            if(check_file_not_exist_error(err)) {
-                                res.status(404).send(make_error_object(err));
-                            } else {
-                                console.error("Exception occured : " + err);
-                                res.status(500).send(make_error_object(err));
-                            }
+                            return_error(res, err);
                             return;
                         }
 
-                        res.status(200).send();
+                        return_data(res, null);
                     });
                 } catch (ex) {
-                    if(check_file_not_exist_error(ex)) {
-                        res.status(404).send(make_error_object(ex));
-                    } else {
-                        console.error("Exception occured : " + ex);
-                        res.status(500).send(make_error_object(ex));
-                    }
+                    return_error(res, ex);
                 }
             } else {
                 res.status(403).send();

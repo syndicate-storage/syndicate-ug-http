@@ -65,9 +65,9 @@ module.exports = {
             }
 
             // parse pattern "-d2"
-            var debug_level_match = args[i].match(/^(-d)(\d+)/gi);
+            var debug_level_match = args[i].match(/^(-d)(\d+)/i);
             if(debug_level_match !== null) {
-                options.debug_level = parseInt(debug_level_match[1])
+                options.debug_level = parseInt(debug_level_match[2]);
                 continue;
             }
 

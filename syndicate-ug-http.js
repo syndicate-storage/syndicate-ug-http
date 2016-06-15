@@ -46,7 +46,6 @@ function extendIPArray(arr) {
             }
         } else if(arr[i] instanceof Array) {
             // ip range
-            // recursively
             new_arr.push(arr[i]);
             if(arr[i].length == 2) {
                 if(rangeCheck.ver(arr[i][0]) === 4 && rangeCheck.ver(arr[i][1]) === 4) {
@@ -62,8 +61,16 @@ function extendIPArray(arr) {
 
 // read local whilelist
 function getWhilelist() {
-    var whitelist = fs.readFileSync('whitelist', 'utf8');
+    var whitelist = "";
     var list = [];
+
+    try {
+        whitelist = fs.readFileSync('whitelist', 'utf8');
+    } catch (e) {
+        // set to default
+        whitelist = "ALL";
+    }
+
     if(isJsonString(whitelist)) {
         var json_obj = JSON.parse(whitelist);
         list = json_obj;

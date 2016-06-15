@@ -54,6 +54,7 @@ function return_error(res, ex) {
     } else if(ex instanceof Error) {
         res.status(500).send(make_error_object(ex));
         console.error("Respond with error code 500 > " + ex);
+        console.error(ex.stack);
     } else {
         res.status(500).send(make_error_object(ex));
         console.error("Respond with error code 500 > " + ex);
@@ -359,14 +360,7 @@ module.exports = {
                                     return;
                                 }
 
-                                syndicate.close_async(ug, fh, function(err, data) {
-                                    if(err) {
-                                        return_error(res, err);
-                                        return;
-                                    }
-
-                                    return_data(res, buffer);
-                                });
+                                return_data(res, buffer);
                             });
                         });
                     }

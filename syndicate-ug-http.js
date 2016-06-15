@@ -18,8 +18,20 @@
 var rest = require('./rest.js');
 var utils = require('./utils.js');
 var express = require('express');
-var nodeCache = require('node-cache')
+var nodeCache = require('node-cache');
+var ipfilter = require('express-ipfilter');
 var app = express();
+var fs = require('fs');
+
+// read local whilelist
+function getWhilelist() {
+    whitelist = fs.readFileSync('whitelist', 'utf8');
+    list = whitelist.trim().split(/\r?\n/);
+    if(list.indexOf("localhost") >= 0 && list.indexOf("127.0.0.1") < 0) {
+        list.push("127.0.0.1");
+    }
+    return list;
+}
 
 (function main() {
     console.log("Syndicate-UG-HTTP start");
@@ -28,6 +40,13 @@ var app = express();
     var param = utils.parse_args(args);
 
     try {
+        // read whitelist
+        whitelist = getWhilelist();
+        console.log("accept requests from : " + whitelist);
+
+        // filter ip range
+        app.use(ipfilter(whitelist));
+
         // start rest
         app.use(function(req, res, next) {
             console.log('%s %s', req.method, req.url);

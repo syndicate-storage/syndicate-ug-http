@@ -45,7 +45,7 @@ function getWhilelist() {
         console.log("accept requests from : " + whitelist);
 
         // filter ip range
-        app.use(ipfilter(whitelist));
+        app.use(ipfilter(whitelist, {mode: 'allow'}));
 
         // start rest
         app.use(function(req, res, next) {

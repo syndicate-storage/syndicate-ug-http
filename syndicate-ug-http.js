@@ -88,10 +88,15 @@ function getWhilelist() {
     try {
         // read whitelist
         whitelist = getWhilelist();
-        console.log("accept requests from : " + whitelist);
+        if(whitelist.indexOf("ALL") >= 0) {
+            // do not filter
+            console.log("accept requests from all hosts");
+        } else {
+            console.log("accept requests from : " + whitelist);
 
-        // filter ip range
-        app.use(ipfilter(whitelist, {mode: 'allow'}));
+            // filter ip range
+            app.use(ipfilter(whitelist, {mode: 'allow'}));
+        }
 
         // start rest
         app.use(function(req, res, next) {

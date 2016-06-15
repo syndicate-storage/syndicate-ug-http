@@ -22,15 +22,61 @@ var nodeCache = require('node-cache');
 var ipfilter = require('express-ipfilter');
 var app = express();
 var fs = require('fs');
+var rangeCheck = require('range_check');
+
+function isJsonString(str) {
+    try {
+        JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
+function extendIPArray(arr) {
+    var new_arr = [];
+    for(var i=0;i<arr.length;i++) {
+        if(typeof(arr[i]) === "string") {
+            new_arr.push(arr[i]);
+            if(rangeCheck.ver(arr[i]) === 4) {
+                var v6ip = "::ffff:" + arr[i].trim();
+                if(arr.indexOf(v6ip) < 0) {
+                    new_arr.push(v6ip);
+                }
+            }
+        } else if(arr[i] instanceof Array) {
+            // ip range
+            // recursively
+            new_arr.push(arr[i]);
+            if(arr[i].length == 2) {
+                if(rangeCheck.ver(arr[i][0]) === 4 && rangeCheck.ver(arr[i][1]) === 4) {
+                    var v6ip_begin = "::ffff:" + arr[i][0].trim();
+                    var v6ip_end = "::ffff:" + arr[i][1].trim();
+                    new_arr.push([v6ip_begin, v6ip_end]);
+                }
+            }
+        }
+    }
+    return new_arr;
+}
 
 // read local whilelist
 function getWhilelist() {
-    whitelist = fs.readFileSync('whitelist', 'utf8');
-    list = whitelist.trim().split(/\r?\n/);
+    var whitelist = fs.readFileSync('whitelist', 'utf8');
+    var list = [];
+    if(isJsonString(whitelist)) {
+        var json_obj = JSON.parse(whitelist);
+        list = json_obj;
+    } else {
+        list = whitelist.trim().split(/\r?\n/);
+    }
+
     if(list.indexOf("localhost") >= 0 && list.indexOf("127.0.0.1") < 0) {
         list.push("127.0.0.1");
     }
-    return list;
+
+    // handle default ipv6 conversion from ipv4
+    return extendIPArray(list);
 }
 
 (function main() {

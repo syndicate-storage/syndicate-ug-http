@@ -39,6 +39,11 @@ function make_error_object(ex) {
 function return_data(res, data) {
     // return with HTTP 200 code
     res.status(200).send(data);
+    if(data instanceof Buffer) {
+        console.error("Respond with data (code 200) > " + data.length + " bytes");
+    } else {
+        console.error("Respond with data (code 200)");
+    }
 }
 
 function return_error(res, ex) {
@@ -81,6 +86,7 @@ module.exports = {
     getRouter: function() {
         var router = new express.Router();
         router.use(function(req, res, next) {
+            console.log('%s %s', req.method, req.url);
             req.target = querystring.unescape(req.path);
             next();
         });

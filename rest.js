@@ -531,12 +531,14 @@ module.exports = {
                             }
                         }
 
-                        stream.on('data', function(chunk) {
+                        req.on('data', function(chunk) {
                             syndicate.write(ug, fh, chunk);
                         });
 
-                        return_data(res, null);
-                        syndicate.close(ug, fh);
+                        req.on('end', function() {
+                            return_data(res, null);
+                            syndicate.close(ug, fh);
+                        });
                     } else {
                         // using the fd
                         // stateful
@@ -555,10 +557,13 @@ module.exports = {
                             return;
                         }
 
-                        stream.on('data', function(chunk) {
+                        req.on('data', function(chunk) {
                             syndicate.write(ug, fh, chunk);
                         });
-                        return_data(res, null);
+
+                        req.on('end', function() {
+                            return_data(res, null);
+                        });
                     }
                 } catch (ex) {
                     return_error(res, ex);
@@ -588,7 +593,7 @@ module.exports = {
                                         return;
                                     }
 
-                                    stream.on('data', function(chunk) {
+                                    req.on('data', function(chunk) {
                                         syndicate.write_async(ug, fh, chunk, function(err, data) {
                                             if(err) {
                                                 return_error(res, err);
@@ -597,17 +602,19 @@ module.exports = {
                                         });
                                     });
 
-                                    syndicate.close_async(ug, fh, function(err, data) {
-                                        if(err) {
-                                            return_error(res, err);
-                                            return;
-                                        }
+                                    req.on('end', function() {
+                                        syndicate.close_async(ug, fh, function(err, data) {
+                                            if(err) {
+                                                return_error(res, err);
+                                                return;
+                                            }
 
-                                        return_data(res, null);
+                                            return_data(res, null);
+                                        });
                                     });
                                 });
                             } else {
-                                stream.on('data', function(chunk) {
+                                req.on('data', function(chunk) {
                                     syndicate.write_async(ug, fh, chunk, function(err, data) {
                                         if(err) {
                                             return_error(res, err);
@@ -616,13 +623,15 @@ module.exports = {
                                     });
                                 });
 
-                                syndicate.close_async(ug, fh, function(err, data) {
-                                    if(err) {
-                                        return_error(res, err);
-                                        return;
-                                    }
+                                req.on('end', function() {
+                                    syndicate.close_async(ug, fh, function(err, data) {
+                                        if(err) {
+                                            return_error(res, err);
+                                            return;
+                                        }
 
-                                    return_data(res, null);
+                                        return_data(res, null);
+                                    });
                                 });
                             }
                         });
@@ -649,7 +658,7 @@ module.exports = {
                                 return;
                             }
 
-                            stream.on('data', function(chunk) {
+                            req.on('data', function(chunk) {
                                 syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
                                         return_error(res, err);
@@ -658,13 +667,15 @@ module.exports = {
                                 });
                             });
 
-                            syndicate.close_async(ug, fh, function(err, data) {
-                                if(err) {
-                                    return_error(res, err);
-                                    return;
-                                }
+                            req.on('end', function() {
+                                syndicate.close_async(ug, fh, function(err, data) {
+                                    if(err) {
+                                        return_error(res, err);
+                                        return;
+                                    }
 
-                                return_data(res, null);
+                                    return_data(res, null);
+                                });
                             });
                         });
                     }

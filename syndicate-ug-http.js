@@ -130,7 +130,7 @@ function getWhilelist() {
         });
 
         wfdCache.on("expired", function(key, value) {
-            console.log("closing expired file handle for read - " + key);
+            console.log("closing expired file handle for write - " + key);
             rest.safeclose(ug, value);
         });
 

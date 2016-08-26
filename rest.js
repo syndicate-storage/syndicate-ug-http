@@ -668,14 +668,7 @@ module.exports = {
                             });
 
                             req.on('end', function() {
-                                syndicate.close_async(ug, fh, function(err, data) {
-                                    if(err) {
-                                        return_error(res, err);
-                                        return;
-                                    }
-
-                                    return_data(res, null);
-                                });
+                                return_data(res, null);
                             });
                         });
                     }

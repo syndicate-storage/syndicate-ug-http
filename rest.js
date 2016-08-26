@@ -563,6 +563,7 @@ module.exports = {
 
                         req.on('end', function() {
                             return_data(res, null);
+                            return;
                         });
                     }
                 } catch (ex) {
@@ -593,16 +594,59 @@ module.exports = {
                                         return;
                                     }
 
+                                    write_err = null;
+
                                     req.on('data', function(chunk) {
+                                        if(write_err) {
+                                            return;
+                                        }
+
                                         syndicate.write_async(ug, fh, chunk, function(err, data) {
                                             if(err) {
-                                                return_error(res, err);
+                                                write_err = err;
                                                 return;
                                             }
                                         });
                                     });
 
                                     req.on('end', function() {
+                                        if(write_err) {
+                                            return_error(res, write_err);
+                                            return;
+                                        } else {
+                                            syndicate.close_async(ug, fh, function(err, data) {
+                                                if(err) {
+                                                    return_error(res, err);
+                                                    return;
+                                                }
+
+                                                return_data(res, null);
+                                                return;
+                                            });
+                                        }
+                                    });
+                                });
+                            } else {
+                                write_err = null;
+
+                                req.on('data', function(chunk) {
+                                    if(write_err) {
+                                        return;
+                                    }
+
+                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                        if(err) {
+                                            write_err = err;
+                                            return;
+                                        }
+                                    });
+                                });
+
+                                req.on('end', function() {
+                                    if(write_err) {
+                                        return_error(res, write_err);
+                                        return;
+                                    } else {
                                         syndicate.close_async(ug, fh, function(err, data) {
                                             if(err) {
                                                 return_error(res, err);
@@ -610,28 +654,9 @@ module.exports = {
                                             }
 
                                             return_data(res, null);
+                                            return;
                                         });
-                                    });
-                                });
-                            } else {
-                                req.on('data', function(chunk) {
-                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
-                                        if(err) {
-                                            return_error(res, err);
-                                            return;
-                                        }
-                                    });
-                                });
-
-                                req.on('end', function() {
-                                    syndicate.close_async(ug, fh, function(err, data) {
-                                        if(err) {
-                                            return_error(res, err);
-                                            return;
-                                        }
-
-                                        return_data(res, null);
-                                    });
+                                    }
                                 });
                             }
                         });
@@ -658,17 +683,29 @@ module.exports = {
                                 return;
                             }
 
+                            write_err = null;
+
                             req.on('data', function(chunk) {
+                                if(write_err) {
+                                    return;
+                                }
+
                                 syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
-                                        return_error(res, err);
+                                        write_err = err;
                                         return;
                                     }
                                 });
                             });
 
                             req.on('end', function() {
-                                return_data(res, null);
+                                if(write_err) {
+                                    return_error(res, write_err);
+                                    return;
+                                } else {
+                                    return_data(res, null);
+                                    return;
+                                }
                             });
                         });
                     }

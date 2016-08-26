@@ -466,7 +466,7 @@ module.exports = {
 
             if(options.mkdir !== undefined) {
                 // mkdir: ?mkdir&mode=777
-                var mode = req.mode;
+                var mode = options.mode;
                 try {
                     syndicate.mkdir(ug, path, mode);
                     return_data(res, null);
@@ -475,7 +475,7 @@ module.exports = {
                 }
             } else if(options.mkdir_async !== undefined) {
                 // mkdir_async: ?mkdir_async&mode=777
-                var mode = req.mode;
+                var mode = options.mode;
                 try {
                     syndicate.mkdir_async(ug, path, mode, function(err, data) {
                         if(err) {
@@ -490,8 +490,8 @@ module.exports = {
                 }
             } else if(options.setxattr !== undefined) {
                 // setxattr: ?setxattr&key='name'&value='value'
-                var key = req.key;
-                var value = req.value;
+                var key = options.key;
+                var value = options.value;
                 try {
                     syndicate.set_xattr(ug, path, key, val);
                     return_data(res, null);
@@ -500,8 +500,8 @@ module.exports = {
                 }
             } else if(options.setxattr_async !== undefined) {
                 // setxattr_async: ?setxattr_async&key='name'&value='value'
-                var key = req.key;
-                var value = req.value;
+                var key = options.key;
+                var value = options.value;
                 try {
                     syndicate.set_xattr_async(ug, path, key, val, function(err, data) {
                         if(err) {
@@ -781,7 +781,7 @@ module.exports = {
             */
             } else if(options.rename !== undefined) {
                 // rename: ?rename&to='to_filename'
-                var to_name = req.to;
+                var to_name = options.to;
                 try {
                     syndicate.rename(ug, path, to_name);
                     return_data(res, null);
@@ -790,7 +790,7 @@ module.exports = {
                 }
             } else if(options.rename_async !== undefined) {
                 // rename_async: ?rename_async&to='to_filename'
-                var to_name = req.to;
+                var to_name = options.to;
                 try {
                     syndicate.rename_async(ug, path, to_name, function(err, data) {
                         if(err) {
@@ -878,7 +878,7 @@ module.exports = {
                 }
             } else if(options.rmxattr !== undefined) {
                 // rmxattr: ?rmxattr&key='name'
-                var key = req.key;
+                var key = options.key;
                 try {
                     syndicate.remove_xattr(ug, path, key);
                     return_data(res, null);
@@ -887,7 +887,7 @@ module.exports = {
                 }
             } else if(options.rmxattr_async !== undefined) {
                 // rmxattr_async: ?rmxattr_async&key='name'
-                var key = req.key;
+                var key = options.key;
                 try {
                     syndicate.remove_xattr_async(ug, path, key, function(err, data) {
                         if(err) {

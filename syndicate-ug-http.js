@@ -134,10 +134,13 @@ function getWhilelist() {
             rest.safeclose(ug, value);
         });
 
+        var statistics = {};
+
         app.use(function(req, res, next) {
             req.ug = ug;
             req.rfdCache = rfdCache;
             req.wfdCache = wfdCache;
+            req.statistics = statistics;
             next();
         });
 

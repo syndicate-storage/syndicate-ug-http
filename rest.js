@@ -22,6 +22,12 @@ var syndicate = require('syndicate-drive');
 
 var g_fd = 1;
 
+function getNextFileDescriptor(req) {
+    var fd = g_fd;
+    g_fd++;
+    return fd;
+}
+
 function getStatistics(req) {
     return req.statistics;
 }
@@ -141,7 +147,6 @@ module.exports = {
     safeclose: function(ug, fh) {
         if(ug) {
             syndicate.close(ug, fh);
-            stat.dec(req, stat.keys.FILE_OPENED);
         }
     },
     getRouter: function() {
@@ -443,7 +448,7 @@ module.exports = {
             } else if(options.open !== undefined) {
                 // open: ?open&flag='r'
                 var flag = options.flag || 'r';
-                var newFd = g_fd++;
+                var newFd = getNextFileDescriptor(req);
                 try {
                     var fh = syndicate.open(ug, path, flag);
                     var json_obj = {
@@ -464,7 +469,7 @@ module.exports = {
             } else if(options.open_async !== undefined) {
                 // open_async: ?open_async&flag='r'
                 var flag = options.flag || 'r';
-                var newFd = g_fd++;
+                var newFd = getNextFileDescriptor(req);
                 try {
                     syndicate.open_async(ug, path, flag, function(err, fh) {
                         if(err) {

@@ -19,6 +19,7 @@ var express = require('express');
 var path = require('path');
 var querystring = require('querystring');
 var syndicate = require('syndicate-drive');
+var utils = require('./utils.js');
 
 var g_fd = 1;
 
@@ -65,7 +66,7 @@ var stat = {
         }
 
         statistics[key] = val+1;
-        console.log('stat_inc %s - %d', key, statistics[key]);
+        utils.log_debug("stat_inc " + key + " - " + statistics[key]);
     },
     dec: function(req, key) {
         var val = null;
@@ -80,7 +81,7 @@ var stat = {
             statistics[key] = val - 1;
         }
 
-        console.log('stat_dec %s - %d', key, statistics[key]);
+        utils.log_debug("stat_dec " + key + " - " + statistics[key]);
     },
 };
 
@@ -104,9 +105,9 @@ function return_data(req, res, data) {
     stat.inc(req, stat.keys.RESPONSE);
     stat.inc(req, stat.keys.RESPONSE_DATA);
     if(data instanceof Buffer) {
-        console.error("Respond with data (code 200) > " + data.length + " bytes");
+        utils.log_info("Respond with data (code 200) > " + data.length + " bytes");
     } else {
-        console.error("Respond with data (code 200)");
+        utils.log_info("Respond with data (code 200)");
     }
 }
 
@@ -115,18 +116,18 @@ function return_error(req, res, ex) {
         if(ex.extra === 2) {
             // ENOENT
             res.status(404).send(make_error_object(ex));
-            console.error("Respond with error code 404 > " + ex);
+            utils.log_error("Respond with error code 404 > " + ex);
         } else {
             res.status(500).send(make_error_object(ex));
-            console.error("Respond with error code 500 > " + ex);
+            utils.log_error("Respond with error code 500 > " + ex);
         }
     } else if(ex instanceof Error) {
         res.status(500).send(make_error_object(ex));
-        console.error("Respond with error code 500 > " + ex);
-        console.error(ex.stack);
+        utils.log_error("Respond with error code 500 > " + ex);
+        utils.log_error(ex.stack);
     } else {
         res.status(500).send(make_error_object(ex));
-        console.error("Respond with error code 500 > " + ex);
+        utils.log_error("Respond with error code 500 > " + ex);
     }
     stat.inc(req, stat.keys.RESPONSE);
     stat.inc(req, stat.keys.RESPONSE_ERROR);
@@ -134,25 +135,29 @@ function return_error(req, res, ex) {
 
 module.exports = {
     init: function(param) {
+        utils.log_debug("INIT: calling syndicate.create_opts");
         var opts = syndicate.create_opts(param.user, param.volume, param.gateway, param.anonymous, param.debug_level);
         // init UG
+        utils.log_debug("INIT: calling syndicate.init");
         return syndicate.init(opts);
     },
     shutdown: function(ug) {
         if(ug) {
             // shutdown UG
+            utils.log_debug("SHUTDOWN: calling syndicate.shutdown");
             syndicate.shutdown(ug);
         }
     },
     safeclose: function(ug, fh) {
         if(ug) {
+            utils.log_debug("SAFECLOSE: calling syndicate.close");
             syndicate.close(ug, fh);
         }
     },
     getRouter: function() {
         var router = new express.Router();
         router.use(function(req, res, next) {
-            console.log('%s %s', req.method, req.url);
+            utils.log_info(req.method + " " + req.url);
             req.target = querystring.unescape(req.path);
             stat.inc(req, stat.keys.REQUEST);
             next();
@@ -172,6 +177,7 @@ module.exports = {
             if(options.statvfs !== undefined) {
                 // statvfs: ?statvfs
                 try {
+                    utils.log_debug("STATVFS: calling syndicate.statvfs");
                     var ret = syndicate.statvfs(ug);
                     return_data(req, res, ret);
                 } catch (ex) {
@@ -180,6 +186,7 @@ module.exports = {
             } else if(options.statvfs_async !== undefined) {
                 // statvfs_async: ?statvfs_async
                 try {
+                    utils.log_debug("STATVFS_ASYNC: calling syndicate.statvfs_async");
                     syndicate.statvfs_async(ug, function(err, statvfs) {
                         if(err) {
                             return_error(req, res, err);
@@ -194,6 +201,7 @@ module.exports = {
             } else if(options.stat !== undefined) {
                 // stat: ?stat
                 try {
+                    utils.log_debug("STAT: calling syndicate.stat_raw - " + path);
                     var ret = syndicate.stat_raw(ug, path);
                     return_data(req, res, ret);
                 } catch (ex) {
@@ -202,6 +210,7 @@ module.exports = {
             } else if(options.stat_async !== undefined) {
                 // stat_async: ?stat_async
                 try {
+                    utils.log_debug("STAT_ASYNC: calling syndicate.stat_raw_async - " + path);
                     syndicate.stat_raw_async(ug, path, function(err, stat) {
                         if(err) {
                             return_error(req, res, err);
@@ -216,6 +225,7 @@ module.exports = {
             } else if(options.listdir !== undefined) {
                 // listdir: ?listdir
                 try {
+                    utils.log_debug("LISTDIR: calling syndicate.list_dir - " + path);
                     var entries = syndicate.list_dir(ug, path);
                     var json_obj = {
                         entries: entries
@@ -227,6 +237,7 @@ module.exports = {
             } else if(options.listdir_async !== undefined) {
                 // listdir_async: ?listdir_async
                 try {
+                    utils.log_debug("LISTDIR_ASYNC: calling syndicate.list_dir_async - " + path);
                     syndicate.list_dir_async(ug, path, function(err, entries) {
                         if(err) {
                             return_error(req, res, err);
@@ -246,6 +257,7 @@ module.exports = {
                 // getxattr: ?getxattr&key='name'
                 var key = options.key;
                 try {
+                    utils.log_debug("GET_XATTR: calling syndicate.get_xattr - " + path + ", " + key);
                     var xattr = syndicate.get_xattr(ug, path, key);
                     var json_obj = {
                         value: xattr
@@ -258,6 +270,7 @@ module.exports = {
                 // getxattr_async: ?getxattr_async&key='name'
                 var key = options.key;
                 try {
+                    utils.log_debug("GET_XATTR_ASYNC: calling syndicate.get_xattr_async - " + path + ", " + key);
                     syndicate.get_xattr_async(ug, path, key, function(err, xattr) {
                         if(err) {
                             return_error(req, res, err);
@@ -276,6 +289,7 @@ module.exports = {
             } else if(options.listxattr !== undefined) {
                 // listxattr: ?listxattr
                 try {
+                    utils.log_debug("LIST_XATTR: calling syndicate.list_xattr - " + path);
                     var xattrs = syndicate.list_xattr(ug, path);
                     var json_obj = {
                         keys: xattrs
@@ -287,6 +301,7 @@ module.exports = {
             } else if(options.listxattr_async !== undefined) {
                 // listxattr_async: ?listxattr_async
                 try {
+                    utils.log_debug("LIST_XATTR_ASYNC: calling syndicate.list_xattr_async - " + path);
                     syndicate.list_xattr_async(ug, path, function(err, xattrs) {
                         if(err) {
                             return_error(req, res, err);
@@ -309,18 +324,23 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
+                        utils.log_debug("READ(STATELESS): calling syndicate.open - " + path);
                         var fh = syndicate.open(ug, path, 'r');
                         if(offset !== 0) {
+                            utils.log_debug("READ(STATELESS): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset != offset) {
                                 return_data(req, res, new Buffer(0));
+                                utils.log_debug("READ(STATELESS): calling syndicate.close");
                                 syndicate.close(ug, fh);
                                 return;
                             }
                         }
 
+                        utils.log_debug("READ(STATELESS): calling syndicate.read - " + len);
                         var buffer = syndicate.read(ug, fh, len);
                         return_data(req, res, buffer);
+                        utils.log_debug("READ(STATELESS): calling syndicate.close");
                         syndicate.close(ug, fh);
                         stat.inc(req, stat.keys.FILE_READ);
                     } else {
@@ -336,6 +356,7 @@ module.exports = {
                         rfdCache.ttl(fd);
 
                         if(vfh.offset != offset) {
+                            utils.log_debug("READ(STATEFUL): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, vfh.fh, offset);
                             if(new_offset != offset) {
                                 vfh.offset = new_offset;
@@ -345,6 +366,7 @@ module.exports = {
                             vfh.offset = offset;
                         }
 
+                        utils.log_debug("READ(STATEFUL): calling syndicate.read - " + len);
                         var buffer = syndicate.read(ug, vfh.fh, len);
                         if(buffer) {
                             vfh.offset += buffer.length;
@@ -363,6 +385,7 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
+                        utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.open_async - " + path);
                         syndicate.open_async(ug, path, 'r', function(err, fh) {
                             if(err) {
                                 return_error(req, res, err);
@@ -370,6 +393,7 @@ module.exports = {
                             }
 
                             if(offset !== 0) {
+                                utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.seek_async - " + offset);
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
                                         return_error(req, res, err);
@@ -381,12 +405,14 @@ module.exports = {
                                         return;
                                     }
 
+                                    utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.read_async - " + len);
                                     syndicate.read_async(ug, fh, len, function(err, buffer) {
                                         if(err) {
                                             return_error(req, res, err);
                                             return;
                                         }
 
+                                        utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.close_async");
                                         syndicate.close_async(ug, fh, function(err, data) {
                                             if(err) {
                                                 return_error(req, res, err);
@@ -399,12 +425,14 @@ module.exports = {
                                     });
                                 });
                             } else {
+                                utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.read_async");
                                 syndicate.read_async(ug, fh, len, function(err, buffer) {
                                     if(err) {
                                         return_error(req, res, err);
                                         return;
                                     }
 
+                                    utils.log_debug("READ_ASYNC(STATELESS): calling syndicate.close_async");
                                     syndicate.close_async(ug, fh, function(err, data) {
                                         if(err) {
                                             return_error(req, res, err);
@@ -412,6 +440,7 @@ module.exports = {
                                         }
 
                                         return_data(req, res, buffer);
+                                        stat.inc(req, stat.keys.FILE_READ);
                                     });
                                 });
                             }
@@ -429,6 +458,7 @@ module.exports = {
                         rfdCache.ttl(fd);
 
                         if(vfh.offset != offset) {
+                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset);
                             syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
@@ -442,6 +472,7 @@ module.exports = {
                                 }
                                 vfh.offset = offset;
 
+                                utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.read_async - " + len);
                                 syndicate.read_async(ug, vfh.fh, len, function(err, buffer) {
                                     if(err) {
                                         return_error(req, res, err);
@@ -457,6 +488,7 @@ module.exports = {
                                 });
                             });
                         } else {
+                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.read_async - " + len);
                             syndicate.read_async(ug, vfh.fh, len, function(err, buffer) {
                                 if(err) {
                                     return_error(req, res, err);
@@ -480,6 +512,7 @@ module.exports = {
                 var flag = options.flag || 'r';
                 var newFd = getNextFileDescriptor(req);
                 try {
+                    utils.log_debug("OPEN: calling syndicate.open - " + path + ", " + flag);
                     var fh = syndicate.open(ug, path, flag);
                     var json_obj = {
                         fd: newFd
@@ -506,6 +539,7 @@ module.exports = {
                 var flag = options.flag || 'r';
                 var newFd = getNextFileDescriptor(req);
                 try {
+                    utils.log_debug("OPEN_ASYNC: calling syndicate.open_async - " + path + ", " + flag);
                     syndicate.open_async(ug, path, flag, function(err, fh) {
                         if(err) {
                             return_error(req, res, err);
@@ -583,6 +617,7 @@ module.exports = {
                 // mkdir: ?mkdir&mode=777
                 var mode = options.mode;
                 try {
+                    utils.log_debug("MKDIR: calling syndicate.mkdir - " + path + ", " + mode);
                     syndicate.mkdir(ug, path, mode);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -592,6 +627,7 @@ module.exports = {
                 // mkdir_async: ?mkdir_async&mode=777
                 var mode = options.mode;
                 try {
+                    utils.log_debug("MKDIR_ASYNC: calling syndicate.mkdir_async - " + path + ", " + mode);
                     syndicate.mkdir_async(ug, path, mode, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -608,6 +644,7 @@ module.exports = {
                 var key = options.key;
                 var value = options.value;
                 try {
+                    utils.log_debug("SETXATTR: calling syndicate.set_xattr - " + path + ", " + key);
                     syndicate.set_xattr(ug, path, key, val);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -618,6 +655,7 @@ module.exports = {
                 var key = options.key;
                 var value = options.value;
                 try {
+                    utils.log_debug("SETXATTR_ASYNC: calling syndicate.set_xattr_async - " + path + ", " + key);
                     syndicate.set_xattr_async(ug, path, key, val, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -636,23 +674,29 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
+                        utils.log_debug("WRITE(STATELESS): calling syndicate.open - " + path);
                         var fh = syndicate.open(ug, path, 'w');
                         if(offset !== 0) {
+                            utils.log_debug("WRITE(STATELESS): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset != offset) {
                                 return_data(req, res, null);
+                                utils.log_debug("WRITE(STATELESS): calling syndicate.close");
                                 syndicate.close(ug, fh);
                                 return;
                             }
                         }
 
                         req.on('data', function(chunk) {
+                            utils.log_debug("WRITE(STATELESS): calling syndicate.write");
                             syndicate.write(ug, fh, chunk);
                         });
 
                         req.on('end', function() {
                             return_data(req, res, null);
+                            utils.log_debug("WRITE(STATELESS): calling syndicate.fsync");
                             syndicate.fsync(ug, fh);
+                            utils.log_debug("WRITE(STATELESS): calling syndicate.close");
                             syndicate.close(ug, fh);
                             stat.inc(req, stat.keys.FILE_WRITE);
                         });
@@ -669,6 +713,7 @@ module.exports = {
                         wfdCache.ttl(fd);
 
                         if(vfh.offset != offset) {
+                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, vfh.fh, offset);
                             if(new_offset != offset) {
                                 vfh.offset = new_offset;
@@ -679,6 +724,7 @@ module.exports = {
                         }
 
                         req.on('data', function(chunk) {
+                            utils.log_debug("WRITE(STATEFUL): calling syndicate.write");
                             syndicate.write(ug, vfh.fh, chunk);
                             if(chunk) {
                                 vfh.offset += chunk.length;
@@ -701,6 +747,7 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
+                        utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.open_async - ", path);
                         syndicate.open_async(ug, path, 'w', function(err, fh) {
                             if(err) {
                                 return_error(req, res, err);
@@ -708,6 +755,7 @@ module.exports = {
                             }
 
                             if(offset !== 0) {
+                                utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.seek_async - ", offset);
                                 syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                     if(err) {
                                         return_error(req, res, err);
@@ -726,6 +774,7 @@ module.exports = {
                                             return;
                                         }
 
+                                        utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.write_async");
                                         syndicate.write_async(ug, fh, chunk, function(err, data) {
                                             if(err) {
                                                 write_err = err;
@@ -739,12 +788,14 @@ module.exports = {
                                             return_error(req, res, write_err);
                                             return;
                                         } else {
+                                            utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.fsync_async");
                                             syndicate.fsync_async(ug, fh, function(err, data) {
                                                 if(err) {
                                                     return_error(req, res, err);
                                                     return;
                                                 }
 
+                                                utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.close_async");
                                                 syndicate.close_async(ug, fh, function(err, data) {
                                                     if(err) {
                                                         return_error(req, res, err);
@@ -767,6 +818,7 @@ module.exports = {
                                         return;
                                     }
 
+                                    utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.write_async");
                                     syndicate.write_async(ug, fh, chunk, function(err, data) {
                                         if(err) {
                                             write_err = err;
@@ -780,12 +832,14 @@ module.exports = {
                                         return_error(req, res, write_err);
                                         return;
                                     } else {
+                                        utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.fsync_async");
                                         syndicate.fsync_async(ug, fh, function(err, data) {
                                             if(err) {
                                                 return_error(req, res, err);
                                                 return;
                                             }
 
+                                            utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.close_async");
                                             syndicate.close_async(ug, fh, function(err, data) {
                                                 if(err) {
                                                     return_error(req, res, err);
@@ -814,6 +868,7 @@ module.exports = {
                         wfdCache.ttl(fd);
 
                         if(vfh.offset != offset) {
+                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset);
                             syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
@@ -834,6 +889,7 @@ module.exports = {
                                         return;
                                     }
 
+                                    utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
                                     syndicate.write_async(ug, vfh.fh, chunk, function(err, data) {
                                         if(err) {
                                             write_err = err;
@@ -863,6 +919,7 @@ module.exports = {
                                     return;
                                 }
 
+                                utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
                                 syndicate.write_async(ug, vfh.fh, chunk, function(err, data) {
                                     if(err) {
                                         write_err = err;
@@ -960,6 +1017,7 @@ module.exports = {
                 // rename: ?rename&to='to_filename'
                 var to_name = options.to;
                 try {
+                    utils.log_debug("RENAME: calling syndicate.rename - " + path + ", " + to_name);
                     syndicate.rename(ug, path, to_name);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -969,6 +1027,7 @@ module.exports = {
                 // rename_async: ?rename_async&to='to_filename'
                 var to_name = options.to;
                 try {
+                    utils.log_debug("RENAME_ASYNC: calling syndicate.rename_async - " + path + ", " + to_name);
                     syndicate.rename_async(ug, path, to_name, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -1013,6 +1072,7 @@ module.exports = {
             if(options.rmdir !== undefined) {
                 // rmdir: ?rmdir
                 try {
+                    utils.log_debug("RMDIR: calling syndicate.rmdir - " + path);
                     syndicate.rmdir(ug, path);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -1021,6 +1081,7 @@ module.exports = {
             } else if(options.rmdir_async !== undefined) {
                 // rmdir_async: ?rmdir_async
                 try {
+                    utils.log_debug("RMDIR_ASYNC: calling syndicate.rmdir_async - " + path);
                     syndicate.rmdir_async(ug, path, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -1035,6 +1096,7 @@ module.exports = {
             } else if(options.unlink !== undefined) {
                 // unlink: ?unlink
                 try {
+                    utils.log_debug("UNLINK: calling syndicate.unlink - " + path);
                     syndicate.unlink(ug, path);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -1043,6 +1105,7 @@ module.exports = {
             } else if(options.unlink_async !== undefined) {
                 // unlink_async: ?unlink_async
                 try {
+                    utils.log_debug("UNLINK_ASYNC: calling syndicate.unlink_async - " + path);
                     syndicate.unlink_async(ug, path, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -1058,6 +1121,7 @@ module.exports = {
                 // rmxattr: ?rmxattr&key='name'
                 var key = options.key;
                 try {
+                    utils.log_debug("RMXATTR: calling syndicate.remove_xattr - " + path + ", " + key);
                     syndicate.remove_xattr(ug, path, key);
                     return_data(req, res, null);
                 } catch (ex) {
@@ -1067,6 +1131,7 @@ module.exports = {
                 // rmxattr_async: ?rmxattr_async&key='name'
                 var key = options.key;
                 try {
+                    utils.log_debug("RMXATTR_ASYNC: calling syndicate.remove_xattr_async - " + path + ", " + key);
                     syndicate.remove_xattr_async(ug, path, key, function(err, data) {
                         if(err) {
                             return_error(req, res, err);
@@ -1102,9 +1167,11 @@ module.exports = {
 
                     // write mode
                     if(wmode) {
+                        utils.log_debug("CLOSE: calling syndicate.fsync");
                         syndicate.fsync(ug, fh);
                     }
 
+                    utils.log_debug("CLOSE: calling syndicate.close");
                     syndicate.close(ug, fh);
                     stat.dec(req, stat.keys.FILE_OPENED);
                     return_data(req, res, null);
@@ -1135,12 +1202,14 @@ module.exports = {
 
                     // write mode
                     if(wmode) {
+                        utils.log_debug("CLOSE_ASYNC: calling syndicate.fsync_async");
                         syndicate.fsync_async(ug, fh, function(err, data) {
                             if(err) {
                                 return_error(req, res, err);
                                 return;
                             }
 
+                            utils.log_debug("CLOSE_ASYNC: calling syndicate.close_async");
                             syndicate.close_async(ug, fh, function(err, data) {
                                 if(err) {
                                     return_error(req, res, err);
@@ -1152,6 +1221,7 @@ module.exports = {
                             });
                         });
                     } else {
+                        utils.log_debug("CLOSE_ASYNC: calling syndicate.close_async");
                         syndicate.close_async(ug, fh, function(err, data) {
                             if(err) {
                                 return_error(req, res, err);

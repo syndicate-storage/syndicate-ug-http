@@ -24,15 +24,6 @@ var app = express();
 var fs = require('fs');
 var rangeCheck = require('range_check');
 
-function isJsonString(str) {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
-    }
-    return true;
-}
-
 function extendIPArray(arr) {
     var new_arr = [];
     for(var i=0;i<arr.length;i++) {
@@ -71,7 +62,7 @@ function getWhilelist() {
         whitelist = "ALL";
     }
 
-    if(isJsonString(whitelist)) {
+    if(utils.is_json_string(whitelist)) {
         var json_obj = JSON.parse(whitelist);
         list = json_obj;
     } else {
@@ -87,7 +78,7 @@ function getWhilelist() {
 }
 
 (function main() {
-    console.log("Syndicate-UG-HTTP start");
+    utils.log_info("Syndicate-UG-HTTP start");
 
     var args = process.argv.slice(1);
     var param = utils.parse_args(args);
@@ -97,9 +88,9 @@ function getWhilelist() {
         whitelist = getWhilelist();
         if(whitelist.indexOf("ALL") >= 0) {
             // do not filter
-            console.log("accept requests from all hosts");
+            utils.log_info("accept requests from all hosts");
         } else {
-            console.log("accept requests from : " + whitelist);
+            utils.log_info("accept requests from : " + whitelist);
 
             // filter ip range
             app.use(ipfilter(whitelist, {mode: 'allow'}));
@@ -107,7 +98,7 @@ function getWhilelist() {
 
         // start rest
         app.use(function(req, res, next) {
-            //console.log('%s %s', req.method, req.url);
+            //utils.log_info(req.method + " " + req.url);
             next();
         });
 
@@ -119,7 +110,7 @@ function getWhilelist() {
         });
 
         rfdCache.on("expired", function(key, value) {
-            console.log("closing expired file handle for read - " + key);
+            utils.log_debug("closing expired file handle for read - " + key);
             rest.safeclose(ug, value.fh);
         });
 
@@ -130,7 +121,7 @@ function getWhilelist() {
         });
 
         wfdCache.on("expired", function(key, value) {
-            console.log("closing expired file handle for write - " + key);
+            utils.log_debug("closing expired file handle for write - " + key);
             rest.safeclose(ug, value.fh);
         });
 
@@ -147,12 +138,12 @@ function getWhilelist() {
         app.use('/', rest.getRouter());
 
         app.listen(param.port, function() {
-            console.log("listening at " + param.port);
+            utils.log_info("listening at " + param.port);
         });
 
         // must not shutdown here!
         //rest.shutdown(ug);
     } catch (e) {
-        console.log("Exception occured: " + e);
+        utils.log_error("Exception occured: " + e);
     }
 })();

@@ -86,5 +86,22 @@ module.exports = {
         }
 
         return options;
+    },
+    is_json_string: function(str) {
+        try {
+            JSON.parse(str);
+        } catch (e) {
+            return false;
+        }
+        return true;
+    },
+    log_debug: function(str) {
+        console.log("SYNDICATE_REST:DEBUG] " + str);
+    },
+    log_error: function(str) {
+        console.error("SYNDICATE_REST:ERROR] " + str);
+    },
+    log_info: function(str) {
+        console.log("SYNDICATE_REST:INFO] " + str);
     }
 };

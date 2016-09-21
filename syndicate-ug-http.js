@@ -120,7 +120,7 @@ function getWhilelist() {
 
         rfdCache.on("expired", function(key, value) {
             console.log("closing expired file handle for read - " + key);
-            rest.safeclose(ug, value);
+            rest.safeclose(ug, value.fh);
         });
 
         var wfdCache = new nodeCache({
@@ -131,7 +131,7 @@ function getWhilelist() {
 
         wfdCache.on("expired", function(key, value) {
             console.log("closing expired file handle for write - " + key);
-            rest.safeclose(ug, value);
+            rest.safeclose(ug, value.fh);
         });
 
         var statistics = {};

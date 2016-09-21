@@ -652,6 +652,7 @@ module.exports = {
 
                         req.on('end', function() {
                             return_data(req, res, null);
+                            syndicate.fsync(ug, fh);
                             syndicate.close(ug, fh);
                             stat.inc(req, stat.keys.FILE_WRITE);
                         });
@@ -738,15 +739,22 @@ module.exports = {
                                             return_error(req, res, write_err);
                                             return;
                                         } else {
-                                            syndicate.close_async(ug, fh, function(err, data) {
+                                            syndicate.fsync_async(ug, fh, function(err, data) {
                                                 if(err) {
                                                     return_error(req, res, err);
                                                     return;
                                                 }
 
-                                                return_data(req, res, null);
-                                                stat.inc(req, stat.keys.FILE_WRITE);
-                                                return;
+                                                syndicate.close_async(ug, fh, function(err, data) {
+                                                    if(err) {
+                                                        return_error(req, res, err);
+                                                        return;
+                                                    }
+
+                                                    return_data(req, res, null);
+                                                    stat.inc(req, stat.keys.FILE_WRITE);
+                                                    return;
+                                                });
                                             });
                                         }
                                     });
@@ -772,15 +780,22 @@ module.exports = {
                                         return_error(req, res, write_err);
                                         return;
                                     } else {
-                                        syndicate.close_async(ug, fh, function(err, data) {
+                                        syndicate.fsync_async(ug, fh, function(err, data) {
                                             if(err) {
                                                 return_error(req, res, err);
                                                 return;
                                             }
 
-                                            return_data(req, res, null);
-                                            stat.inc(req, stat.keys.FILE_WRITE);
-                                            return;
+                                            syndicate.close_async(ug, fh, function(err, data) {
+                                                if(err) {
+                                                    return_error(req, res, err);
+                                                    return;
+                                                }
+
+                                                return_data(req, res, null);
+                                                stat.inc(req, stat.keys.FILE_WRITE);
+                                                return;
+                                            });
                                         });
                                     }
                                 });
@@ -1074,6 +1089,7 @@ module.exports = {
                         throw new Error("unable to find a file handle for " + fd);
                     }
 
+                    var wmode = false;
                     if(rvfh !== undefined) {
                         fh = rvfh.fh;
                         rfdCache.del(fd);
@@ -1081,6 +1097,12 @@ module.exports = {
                     if(wvfh !== undefined) {
                         fh = wvfh.fh;
                         wfdCache.del(fd);
+                        wmode = true;
+                    }
+
+                    // write mode
+                    if(wmode) {
+                        syndicate.fsync(ug, fh);
                     }
 
                     syndicate.close(ug, fh);
@@ -1100,6 +1122,7 @@ module.exports = {
                         throw new Error("unable to find a file handle for " + fd);
                     }
 
+                    var wmode = false;
                     if(rvfh !== undefined) {
                         fh = rvfh.fh;
                         rfdCache.del(fd);
@@ -1107,17 +1130,38 @@ module.exports = {
                     if(wvfh !== undefined) {
                         fh = wvfh.fh;
                         wfdCache.del(fd);
+                        wmode = true;
                     }
 
-                    syndicate.close_async(ug, fh, function(err, data) {
-                        if(err) {
-                            return_error(req, res, err);
-                            return;
-                        }
+                    // write mode
+                    if(wmode) {
+                        syndicate.fsync_async(ug, fh, function(err, data) {
+                            if(err) {
+                                return_error(req, res, err);
+                                return;
+                            }
 
-                        return_data(req, res, null);
-                        stat.dec(req, stat.keys.FILE_OPENED);
-                    });
+                            syndicate.close_async(ug, fh, function(err, data) {
+                                if(err) {
+                                    return_error(req, res, err);
+                                    return;
+                                }
+
+                                return_data(req, res, null);
+                                stat.dec(req, stat.keys.FILE_OPENED);
+                            });
+                        });
+                    } else {
+                        syndicate.close_async(ug, fh, function(err, data) {
+                            if(err) {
+                                return_error(req, res, err);
+                                return;
+                            }
+
+                            return_data(req, res, null);
+                            stat.dec(req, stat.keys.FILE_OPENED);
+                        });
+                    }
                 } catch (ex) {
                     return_error(req, res, ex);
                 }

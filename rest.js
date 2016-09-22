@@ -705,7 +705,8 @@ module.exports = {
                             try {
                                 var fh = wfdCache.get(fd);
                                 if(fh === undefined) {
-                                    throw new Error("unable to find a file handle for " + fd);
+                                    return_error(req, res, new Error("unable to find a file handle for " + fd));
+                                    return;
                                 }
 
                                 // extend cache's ttl
@@ -845,7 +846,8 @@ module.exports = {
                         req.on('end', function() {
                             var fh = wfdCache.get(fd);
                             if(fh === undefined) {
-                                throw new Error("unable to find a file handle for " + fd);
+                                return_error(req, res, new Error("unable to find a file handle for " + fd));
+                                return;
                             }
 
                             // extend cache's ttl
@@ -880,7 +882,7 @@ module.exports = {
                                 });
                             } else {
                                 utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
-                                syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                syndicate.write_async(ug, fh, buffer, function(err, data) {
                                     if(err) {
                                         return_error(req, res, err);
                                         return;

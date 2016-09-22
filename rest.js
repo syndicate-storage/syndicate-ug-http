@@ -651,64 +651,85 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
-                        utils.log_debug("WRITE(STATELESS): calling syndicate.open - " + path);
-                        var fh = syndicate.open(ug, path, 'w');
-                        if(offset !== 0) {
-                            utils.log_debug("WRITE(STATELESS): calling syndicate.seek - " + offset);
-                            var new_offset = syndicate.seek(ug, fh, offset);
-                            if(new_offset !== offset) {
-                                return_data(req, res, null);
-                                utils.log_debug("WRITE(STATELESS): calling syndicate.close");
-                                syndicate.close(ug, fh);
-                                return;
-                            }
-                        }
-
+                        var buffer = new Buffer(len);
+                        var buffer_offset = 0;
                         req.on('data', function(chunk) {
-                            utils.log_debug("WRITE(STATELESS): calling syndicate.write");
-                            syndicate.write(ug, fh, chunk);
+                            chunk.copy(buffer, buffer_offset);
+                            buffer_offset += chunk.length;
                         });
 
                         req.on('end', function() {
-                            return_data(req, res, null);
-                            utils.log_debug("WRITE(STATELESS): calling syndicate.fsync");
-                            syndicate.fsync(ug, fh);
-                            utils.log_debug("WRITE(STATELESS): calling syndicate.close");
-                            syndicate.close(ug, fh);
-                            stat.inc(req, stat.keys.FILE_WRITE);
+                            try {
+                                utils.log_debug("WRITE(STATELESS): calling syndicate.open - " + path);
+                                var fh = syndicate.open(ug, path, 'w');
+
+                                if(offset !== 0) {
+                                    utils.log_debug("WRITE(STATELESS): calling syndicate.seek - " + offset);
+                                    var new_offset = syndicate.seek(ug, fh, offset);
+                                    if(new_offset !== offset) {
+                                        return_error(req, res, new Error("can't seek to requested offset"));
+                                        utils.log_debug("WRITE(STATELESS): calling syndicate.close");
+                                        syndicate.close(ug, fh);
+                                        return;
+                                    }
+                                }
+
+                                utils.log_debug("WRITE(STATELESS): calling syndicate.write");
+                                syndicate.write(ug, fh, buffer);
+
+                                utils.log_debug("WRITE(STATELESS): calling syndicate.fsync");
+                                syndicate.fsync(ug, fh);
+
+                                utils.log_debug("WRITE(STATELESS): calling syndicate.close");
+                                syndicate.close(ug, fh);
+
+                                return_data(req, res, null);
+                                stat.inc(req, stat.keys.FILE_WRITE);
+                            } catch (ex) {
+                                return_error(req, res, ex);
+                            }
                         });
                     } else {
                         // using the fd
-                        // stateful
                         var fd = options.fd;
-                        var fh = wfdCache.get(fd);
-                        if(fh === undefined) {
-                            throw new Error("unable to find a file handle for " + fd);
-                        }
 
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
-
-                        utils.log_debug("WRITE(STATEFUL): calling syndicate.tell");
-                        var cur_off = syndicate.tell(ug, fh);
-                        if(cur_off !== offset) {
-                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset + ", current " + cur_off);
-                            var new_offset = syndicate.seek(ug, fh, offset);
-                            if(new_offset !== offset) {
-                                return_data(req, res, new Buffer(0));
-                                return;
-                            }
-                        }
-
+                        // stateful
+                        var buffer = new Buffer(len);
+                        var buffer_offset = 0;
                         req.on('data', function(chunk) {
-                            utils.log_debug("WRITE(STATEFUL): calling syndicate.write");
-                            syndicate.write(ug, fh, chunk);
+                            chunk.copy(buffer, buffer_offset);
+                            buffer_offset += chunk.length;
                         });
 
                         req.on('end', function() {
-                            return_data(req, res, null);
-                            stat.inc(req, stat.keys.FILE_WRITE);
-                            return;
+                            try {
+                                var fh = wfdCache.get(fd);
+                                if(fh === undefined) {
+                                    throw new Error("unable to find a file handle for " + fd);
+                                }
+
+                                // extend cache's ttl
+                                wfdCache.ttl(fd);
+
+                                utils.log_debug("WRITE(STATEFUL): calling syndicate.tell");
+                                var cur_off = syndicate.tell(ug, fh);
+                                if(cur_off !== offset) {
+                                    utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset + ", current " + cur_off);
+                                    var new_offset = syndicate.seek(ug, fh, offset);
+                                    if(new_offset !== offset) {
+                                        return_error(req, res, new Error("can't seek to requested offset"));
+                                        return;
+                                    }
+                                }
+
+                                utils.log_debug("WRITE(STATEFUL): calling syndicate.write");
+                                syndicate.write(ug, fh, buffer);
+
+                                return_data(req, res, null);
+                                stat.inc(req, stat.keys.FILE_WRITE);
+                            } catch (ex) {
+                                return_error(req, res, ex);
+                            }
                         });
                     }
                 } catch (ex) {
@@ -721,6 +742,13 @@ module.exports = {
                 try {
                     if(options.fd === undefined) {
                         // stateless
+                        var buffer = new Buffer(len);
+                        var buffer_offset = 0;
+                        req.on('data', function(chunk) {
+                            chunk.copy(buffer, buffer_offset);
+                            buffer_offset += chunk.length;
+                        });
+
                         utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.open_async - ", path);
                         syndicate.open_async(ug, path, 'w', function(err, fh) {
                             if(err) {
@@ -737,31 +765,18 @@ module.exports = {
                                     }
 
                                     if(new_offset !== offset) {
-                                        return_data(req, res, new Buffer(0));
+                                        return_error(req, res, new Error("can't seek to requested offset"));
                                         return;
                                     }
 
-                                    write_err = null;
-
-                                    req.on('data', function(chunk) {
-                                        if(write_err) {
-                                            return;
-                                        }
-
+                                    req.on('end', function() {
                                         utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.write_async");
-                                        syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                        syndicate.write_async(ug, fh, buffer, function(err, data) {
                                             if(err) {
-                                                write_err = err;
+                                                return_error(req, res, err);
                                                 return;
                                             }
-                                        });
-                                    });
 
-                                    req.on('end', function() {
-                                        if(write_err) {
-                                            return_error(req, res, write_err);
-                                            return;
-                                        } else {
                                             utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.fsync_async");
                                             syndicate.fsync_async(ug, fh, function(err, data) {
                                                 if(err) {
@@ -781,31 +796,18 @@ module.exports = {
                                                     return;
                                                 });
                                             });
-                                        }
+                                        });
                                     });
                                 });
                             } else {
-                                write_err = null;
-
-                                req.on('data', function(chunk) {
-                                    if(write_err) {
-                                        return;
-                                    }
-
+                                req.on('end', function() {
                                     utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.write_async");
-                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                    syndicate.write_async(ug, fh, buffer, function(err, data) {
                                         if(err) {
-                                            write_err = err;
+                                            return_error(req, res, err);
                                             return;
                                         }
-                                    });
-                                });
 
-                                req.on('end', function() {
-                                    if(write_err) {
-                                        return_error(req, res, write_err);
-                                        return;
-                                    } else {
                                         utils.log_debug("WRITE_ASYNC(STATELESS): calling syndicate.fsync_async");
                                         syndicate.fsync_async(ug, fh, function(err, data) {
                                             if(err) {
@@ -825,93 +827,71 @@ module.exports = {
                                                 return;
                                             });
                                         });
-                                    }
+                                    });
                                 });
                             }
                         });
                     } else {
                         // using the fd
-                        // stateful
                         var fd = options.fd;
-                        var fh = wfdCache.get(fd);
-                        if(fh === undefined) {
-                            throw new Error("unable to find a file handle for " + fd);
-                        }
+                        // stateful
+                        var buffer = new Buffer(len);
+                        var buffer_offset = 0;
+                        req.on('data', function(chunk) {
+                            chunk.copy(buffer, buffer_offset);
+                            buffer_offset += chunk.length;
+                        });
 
-                        // extend cache's ttl
-                        wfdCache.ttl(fd);
+                        req.on('end', function() {
+                            var fh = wfdCache.get(fd);
+                            if(fh === undefined) {
+                                throw new Error("unable to find a file handle for " + fd);
+                            }
 
-                        utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.tell");
-                        var cur_off = syndicate.tell(ug, fh);
-                        if(cur_off !== offset) {
-                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + cur_off);
-                            syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
-                                if(err) {
-                                    return_error(req, res, err);
-                                    return;
-                                }
+                            // extend cache's ttl
+                            wfdCache.ttl(fd);
 
-                                if(new_offset !== offset) {
-                                    return_data(req, res, new Buffer(0));
-                                    return;
-                                }
+                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.tell");
+                            var cur_off = syndicate.tell(ug, fh);
+                            if(cur_off !== offset) {
+                                utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + cur_off);
+                                syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
+                                    if(err) {
+                                        return_error(req, res, err);
+                                        return;
+                                    }
 
-                                write_err = null;
-
-                                req.on('data', function(chunk) {
-                                    if(write_err) {
+                                    if(new_offset !== offset) {
+                                        return_error(req, res, new Error("can't seek to requested offset"));
                                         return;
                                     }
 
                                     utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
-                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
+                                    syndicate.write_async(ug, fh, buffer, function(err, data) {
                                         if(err) {
-                                            write_err = err;
+                                            return_error(req, res, err);
                                             return;
                                         }
-                                    });
-                                });
 
-                                req.on('end', function() {
-                                    if(write_err) {
-                                        return_error(req, res, write_err);
-                                        return;
-                                    } else {
                                         return_data(req, res, null);
                                         stat.inc(req, stat.keys.FILE_WRITE);
                                         return;
-                                    }
+                                    });
                                 });
-                            });
-                        } else {
-                            write_err = null;
-
-                            req.on('data', function(chunk) {
-                                if(write_err) {
-                                    return;
-                                }
-
+                            } else {
                                 utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
                                 syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
-                                        write_err = err;
+                                        return_error(req, res, err);
                                         return;
                                     }
-                                });
-                            });
 
-                            req.on('end', function() {
-                                if(write_err) {
-                                    return_error(req, res, write_err);
-                                    return;
-                                } else {
                                     return_data(req, res, null);
                                     stat.inc(req, stat.keys.FILE_WRITE);
                                     return;
-                                }
-                            });
-                        }
-
+                                });
+                            }
+                        });
                     }
                 } catch (ex) {
                     return_error(req, res, ex);

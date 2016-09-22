@@ -329,7 +329,7 @@ module.exports = {
                         if(offset !== 0) {
                             utils.log_debug("READ(STATELESS): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, fh, offset);
-                            if(new_offset != offset) {
+                            if(new_offset !== offset) {
                                 return_data(req, res, new Buffer(0));
                                 utils.log_debug("READ(STATELESS): calling syndicate.close");
                                 syndicate.close(ug, fh);
@@ -355,10 +355,10 @@ module.exports = {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
 
-                        if(vfh.offset != offset) {
-                            utils.log_debug("READ(STATEFUL): calling syndicate.seek - " + offset);
+                        if(vfh.offset !== offset) {
+                            utils.log_debug("READ(STATEFUL): calling syndicate.seek - " + offset + ", current " + vfh.offset);
                             var new_offset = syndicate.seek(ug, vfh.fh, offset);
-                            if(new_offset != offset) {
+                            if(new_offset !== offset) {
                                 vfh.offset = new_offset;
                                 return_data(req, res, new Buffer(0));
                                 return;
@@ -400,7 +400,7 @@ module.exports = {
                                         return;
                                     }
 
-                                    if(new_offset != offset) {
+                                    if(new_offset !== offset) {
                                         return_data(req, res, new Buffer(0));
                                         return;
                                     }
@@ -457,15 +457,15 @@ module.exports = {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
 
-                        if(vfh.offset != offset) {
-                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset);
+                        if(vfh.offset !== offset) {
+                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + vfh.offset);
                             syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
                                     return;
                                 }
 
-                                if(new_offset != offset) {
+                                if(new_offset !== offset) {
                                     vfh.offset = new_offset;
                                     return_data(req, res, new Buffer(0));
                                     return;
@@ -679,7 +679,7 @@ module.exports = {
                         if(offset !== 0) {
                             utils.log_debug("WRITE(STATELESS): calling syndicate.seek - " + offset);
                             var new_offset = syndicate.seek(ug, fh, offset);
-                            if(new_offset != offset) {
+                            if(new_offset !== offset) {
                                 return_data(req, res, null);
                                 utils.log_debug("WRITE(STATELESS): calling syndicate.close");
                                 syndicate.close(ug, fh);
@@ -712,10 +712,10 @@ module.exports = {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
 
-                        if(vfh.offset != offset) {
-                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset);
+                        if(vfh.offset !== offset) {
+                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset + ", current " + vfh.offset);
                             var new_offset = syndicate.seek(ug, vfh.fh, offset);
-                            if(new_offset != offset) {
+                            if(new_offset !== offset) {
                                 vfh.offset = new_offset;
                                 return_data(req, res, new Buffer(0));
                                 return;
@@ -762,7 +762,7 @@ module.exports = {
                                         return;
                                     }
 
-                                    if(new_offset != offset) {
+                                    if(new_offset !== offset) {
                                         return_data(req, res, new Buffer(0));
                                         return;
                                     }
@@ -867,15 +867,15 @@ module.exports = {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
 
-                        if(vfh.offset != offset) {
-                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset);
+                        if(vfh.offset !== offset) {
+                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + vfh.offset);
                             syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
                                     return;
                                 }
 
-                                if(new_offset != offset) {
+                                if(new_offset !== offset) {
                                     vfh.offset = new_offset;
                                     return_data(req, res, new Buffer(0));
                                     return;

@@ -109,9 +109,9 @@ function getWhilelist() {
             useClones: false
         });
 
-        rfdCache.on("expired", function(key, value) {
+        rfdCache.on("expired", function(key, fh) {
             utils.log_debug("closing expired file handle for read - " + key);
-            rest.safeclose(ug, value.fh);
+            rest.safeclose(ug, fh);
         });
 
         var wfdCache = new nodeCache({
@@ -120,9 +120,9 @@ function getWhilelist() {
             useClones: false
         });
 
-        wfdCache.on("expired", function(key, value) {
+        wfdCache.on("expired", function(key, fh) {
             utils.log_debug("closing expired file handle for write - " + key);
-            rest.safeclose(ug, value.fh);
+            rest.safeclose(ug, fh);
         });
 
         var statistics = {};

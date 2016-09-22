@@ -347,31 +347,26 @@ module.exports = {
                         // using the fd
                         // stateful
                         var fd = options.fd;
-                        var vfh = rfdCache.get(fd);
-                        if(vfh === undefined) {
+                        var fh = rfdCache.get(fd);
+                        if(fh === undefined) {
                             throw new Error("unable to find a file handle for " + fd);
                         }
 
                         // extend cache's ttl
                         rfdCache.ttl(fd);
-
-                        if(vfh.offset !== offset) {
-                            utils.log_debug("READ(STATEFUL): calling syndicate.seek - " + offset + ", current " + vfh.offset);
-                            var new_offset = syndicate.seek(ug, vfh.fh, offset);
+                        utils.log_debug("READ(STATEFUL): calling syndicate.tell");
+                        var cur_off = syndicate.tell(ug, fh);
+                        if(cur_off !== offset) {
+                            utils.log_debug("READ(STATEFUL): calling syndicate.seek - " + offset + ", current " + cur_off);
+                            var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset !== offset) {
-                                vfh.offset = new_offset;
                                 return_data(req, res, new Buffer(0));
                                 return;
                             }
-                            vfh.offset = offset;
                         }
 
                         utils.log_debug("READ(STATEFUL): calling syndicate.read - " + len);
-                        var buffer = syndicate.read(ug, vfh.fh, len);
-                        if(buffer) {
-                            vfh.offset += buffer.length;
-                        }
-
+                        var buffer = syndicate.read(ug, fh, len);
                         return_data(req, res, buffer);
                         stat.inc(req, stat.keys.FILE_READ);
                     }
@@ -449,38 +444,34 @@ module.exports = {
                         // using the fd
                         // stateful
                         var fd = options.fd;
-                        var vfh = rfdCache.get(fd);
-                        if(vfh === undefined) {
+                        var fh = rfdCache.get(fd);
+                        if(fh === undefined) {
                             throw new Error("unable to find a file handle for " + fd);
                         }
 
                         // extend cache's ttl
                         rfdCache.ttl(fd);
 
-                        if(vfh.offset !== offset) {
-                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + vfh.offset);
-                            syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
+                        utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.tell");
+                        var cur_off = syndicate.tell(ug, fh);
+                        if(cur_off !== offset) {
+                            utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + cur_off);
+                            syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
                                     return;
                                 }
 
                                 if(new_offset !== offset) {
-                                    vfh.offset = new_offset;
                                     return_data(req, res, new Buffer(0));
                                     return;
                                 }
-                                vfh.offset = offset;
 
                                 utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.read_async - " + len);
-                                syndicate.read_async(ug, vfh.fh, len, function(err, buffer) {
+                                syndicate.read_async(ug, fh, len, function(err, buffer) {
                                     if(err) {
                                         return_error(req, res, err);
                                         return;
-                                    }
-
-                                    if(buffer) {
-                                        vfh.offset += buffer.length;
                                     }
 
                                     return_data(req, res, buffer);
@@ -489,14 +480,10 @@ module.exports = {
                             });
                         } else {
                             utils.log_debug("READ_ASYNC(STATEFUL): calling syndicate.read_async - " + len);
-                            syndicate.read_async(ug, vfh.fh, len, function(err, buffer) {
+                            syndicate.read_async(ug, fh, len, function(err, buffer) {
                                 if(err) {
                                     return_error(req, res, err);
                                     return;
-                                }
-
-                                if(buffer) {
-                                    vfh.offset += buffer.length;
                                 }
 
                                 return_data(req, res, buffer);
@@ -519,16 +506,11 @@ module.exports = {
                     };
                     return_data(req, res, json_obj);
 
-                    var vfh = {
-                        fh: fh,
-                        offset: 0
-                    };
-
                     // add to cache
                     if(flag === 'r') {
-                        rfdCache.set(newFd, vfh);
+                        rfdCache.set(newFd, fh);
                     } else {
-                        wfdCache.set(newFd, vfh);
+                        wfdCache.set(newFd, fh);
                     }
                     stat.inc(req, stat.keys.FILE_OPENED);
                 } catch (ex) {
@@ -551,16 +533,11 @@ module.exports = {
                         };
                         return_data(req, res, json_obj);
 
-                        var vfh = {
-                            fh: fh,
-                            offset: 0
-                        };
-
                         // add to cache
                         if(flag === 'r') {
-                            rfdCache.set(newFd, vfh);
+                            rfdCache.set(newFd, fh);
                         } else {
-                            wfdCache.set(newFd, vfh);
+                            wfdCache.set(newFd, fh);
                         }
                         stat.inc(req, stat.keys.FILE_OPENED);
                     });
@@ -577,11 +554,11 @@ module.exports = {
                     // using the fd
                     // stateful
                     var fd = options.fd;
-                    var rvfh = rfdCache.get(fd);
-                    var wvfh = wfdCache.get(fd);
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
 
                     var opened = false;
-                    if(rvfh === undefined && wvfh === undefined) {
+                    if(rfh === undefined && wfh === undefined) {
                         opened = false;
                     } else {
                         opened = true;
@@ -704,31 +681,28 @@ module.exports = {
                         // using the fd
                         // stateful
                         var fd = options.fd;
-                        var vfh = wfdCache.get(fd);
-                        if(vfh === undefined) {
+                        var fh = wfdCache.get(fd);
+                        if(fh === undefined) {
                             throw new Error("unable to find a file handle for " + fd);
                         }
 
                         // extend cache's ttl
                         wfdCache.ttl(fd);
 
-                        if(vfh.offset !== offset) {
-                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset + ", current " + vfh.offset);
-                            var new_offset = syndicate.seek(ug, vfh.fh, offset);
+                        utils.log_debug("WRITE(STATEFUL): calling syndicate.tell");
+                        var cur_off = syndicate.tell(ug, fh);
+                        if(cur_off !== offset) {
+                            utils.log_debug("WRITE(STATEFUL): calling syndicate.seek - " + offset + ", current " + cur_off);
+                            var new_offset = syndicate.seek(ug, fh, offset);
                             if(new_offset !== offset) {
-                                vfh.offset = new_offset;
                                 return_data(req, res, new Buffer(0));
                                 return;
                             }
-                            vfh.offset = offset;
                         }
 
                         req.on('data', function(chunk) {
                             utils.log_debug("WRITE(STATEFUL): calling syndicate.write");
-                            syndicate.write(ug, vfh.fh, chunk);
-                            if(chunk) {
-                                vfh.offset += chunk.length;
-                            }
+                            syndicate.write(ug, fh, chunk);
                         });
 
                         req.on('end', function() {
@@ -859,28 +833,28 @@ module.exports = {
                         // using the fd
                         // stateful
                         var fd = options.fd;
-                        var vfh = wfdCache.get(fd);
-                        if(vfh === undefined) {
+                        var fh = wfdCache.get(fd);
+                        if(fh === undefined) {
                             throw new Error("unable to find a file handle for " + fd);
                         }
 
                         // extend cache's ttl
                         wfdCache.ttl(fd);
 
-                        if(vfh.offset !== offset) {
-                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + vfh.offset);
-                            syndicate.seek_async(ug, vfh.fh, offset, function(err, new_offset) {
+                        utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.tell");
+                        var cur_off = syndicate.tell(ug, fh);
+                        if(cur_off !== offset) {
+                            utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.seek_async - " + offset + ", current " + cur_off);
+                            syndicate.seek_async(ug, fh, offset, function(err, new_offset) {
                                 if(err) {
                                     return_error(req, res, err);
                                     return;
                                 }
 
                                 if(new_offset !== offset) {
-                                    vfh.offset = new_offset;
                                     return_data(req, res, new Buffer(0));
                                     return;
                                 }
-                                vfh.offset = offset;
 
                                 write_err = null;
 
@@ -890,13 +864,11 @@ module.exports = {
                                     }
 
                                     utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
-                                    syndicate.write_async(ug, vfh.fh, chunk, function(err, data) {
+                                    syndicate.write_async(ug, fh, chunk, function(err, data) {
                                         if(err) {
                                             write_err = err;
                                             return;
                                         }
-
-                                        vfh.offset += chunk.length;
                                     });
                                 });
 
@@ -920,13 +892,11 @@ module.exports = {
                                 }
 
                                 utils.log_debug("WRITE_ASYNC(STATEFUL): calling syndicate.write_async");
-                                syndicate.write_async(ug, vfh.fh, chunk, function(err, data) {
+                                syndicate.write_async(ug, fh, chunk, function(err, data) {
                                     if(err) {
                                         write_err = err;
                                         return;
                                     }
-
-                                    vfh.offset += chunk.length;
                                 });
                             });
 
@@ -956,18 +926,18 @@ module.exports = {
                     // using the fd
                     // stateful
                     var fd = options.fd;
-                    var rvfh = rfdCache.get(fd);
-                    var wvfh = wfdCache.get(fd);
-                    if(rvfh === undefined && wvfh === undefined) {
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if(rfh === undefined && wfh === undefined) {
                         throw new Error("could not find a file handle");
                     }
 
-                    if(rvfh !== undefined) {
+                    if(rfh !== undefined) {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
                     }
 
-                    if(wvfh !== undefined) {
+                    if(wfh !== undefined) {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
                     }
@@ -986,18 +956,18 @@ module.exports = {
                     // using the fd
                     // stateful
                     var fd = options.fd;
-                    var rvfh = rfdCache.get(fd);
-                    var wvfh = wfdCache.get(fd);
-                    if(rvfh === undefined && wvfh === undefined) {
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if(rfh === undefined && wfh === undefined) {
                         throw new Error("could not find a file handle");
                     }
 
-                    if(rvfh !== undefined) {
+                    if(rfh !== undefined) {
                         // extend cache's ttl
                         rfdCache.ttl(fd);
                     }
 
-                    if(wvfh !== undefined) {
+                    if(wfh !== undefined) {
                         // extend cache's ttl
                         wfdCache.ttl(fd);
                     }
@@ -1148,19 +1118,19 @@ module.exports = {
                 var fd = options.fd;
                 try {
                     var fh;
-                    var rvfh = rfdCache.get(fd);
-                    var wvfh = wfdCache.get(fd);
-                    if(rvfh === undefined && wvfh === undefined) {
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if(rfh === undefined && wfh === undefined) {
                         throw new Error("unable to find a file handle for " + fd);
                     }
 
                     var wmode = false;
-                    if(rvfh !== undefined) {
-                        fh = rvfh.fh;
+                    if(rfh !== undefined) {
+                        fh = rfh;
                         rfdCache.del(fd);
                     }
-                    if(wvfh !== undefined) {
-                        fh = wvfh.fh;
+                    if(wfh !== undefined) {
+                        fh = wfh;
                         wfdCache.del(fd);
                         wmode = true;
                     }
@@ -1183,19 +1153,19 @@ module.exports = {
                 var fd = options.fd;
                 try {
                     var fh;
-                    var rvfh = rfdCache.get(fd);
-                    var wvfh = wfdCache.get(fd);
-                    if(rvfh === undefined && wvfh === undefined) {
+                    var rfh = rfdCache.get(fd);
+                    var wfh = wfdCache.get(fd);
+                    if(rfh === undefined && wfh === undefined) {
                         throw new Error("unable to find a file handle for " + fd);
                     }
 
                     var wmode = false;
-                    if(rvfh !== undefined) {
-                        fh = rvfh.fh;
+                    if(rfh !== undefined) {
+                        fh = rfh;
                         rfdCache.del(fd);
                     }
-                    if(wvfh !== undefined) {
-                        fh = wvfh.fh;
+                    if(wfh !== undefined) {
+                        fh = wfh;
                         wfdCache.del(fd);
                         wmode = true;
                     }

@@ -1,5 +1,5 @@
 /*
-   Copyright 2015 The Trustees of Princeton University
+   Copyright 2016 The Trustees of University of Arizona
 
    Licensed under the Apache License, Version 2.0 (the "License" );
    you may not use this file except in compliance with the License.

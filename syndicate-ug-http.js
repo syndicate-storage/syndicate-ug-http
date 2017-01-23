@@ -17,65 +17,10 @@
 
 var rest = require('./rest.js');
 var utils = require('./utils.js');
+var filter = require('./ipfilter.js');
 var express = require('express');
 var nodeCache = require('node-cache');
-var ipfilter = require('express-ipfilter');
 var app = express();
-var fs = require('fs');
-var rangeCheck = require('range_check');
-
-function extendIPArray(arr) {
-    var new_arr = [];
-    for(var i=0;i<arr.length;i++) {
-        if(typeof(arr[i]) === "string") {
-            new_arr.push(arr[i]);
-            if(rangeCheck.ver(arr[i]) === 4) {
-                var v6ip = "::ffff:" + arr[i].trim();
-                if(arr.indexOf(v6ip) < 0) {
-                    new_arr.push(v6ip);
-                }
-            }
-        } else if(arr[i] instanceof Array) {
-            // ip range
-            new_arr.push(arr[i]);
-            if(arr[i].length == 2) {
-                if(rangeCheck.ver(arr[i][0]) === 4 && rangeCheck.ver(arr[i][1]) === 4) {
-                    var v6ip_begin = "::ffff:" + arr[i][0].trim();
-                    var v6ip_end = "::ffff:" + arr[i][1].trim();
-                    new_arr.push([v6ip_begin, v6ip_end]);
-                }
-            }
-        }
-    }
-    return new_arr;
-}
-
-// read local whilelist
-function getWhilelist() {
-    var whitelist = "";
-    var list = [];
-
-    try {
-        whitelist = fs.readFileSync('whitelist', 'utf8');
-    } catch (e) {
-        // set to default
-        whitelist = "ALL";
-    }
-
-    if(utils.is_json_string(whitelist)) {
-        var json_obj = JSON.parse(whitelist);
-        list = json_obj;
-    } else {
-        list = whitelist.trim().split(/\r?\n/);
-    }
-
-    if(list.indexOf("localhost") >= 0 && list.indexOf("127.0.0.1") < 0) {
-        list.push("127.0.0.1");
-    }
-
-    // handle default ipv6 conversion from ipv4
-    return extendIPArray(list);
-}
 
 (function main() {
     utils.log_info("Syndicate-UG-HTTP start");
@@ -85,23 +30,20 @@ function getWhilelist() {
 
     try {
         // read whitelist
-        whitelist = getWhilelist();
-        if(whitelist.indexOf("ALL") >= 0) {
+        whitelist = filter.get_white_list();
+        express_filter = filter.get_express_filter(whitelist);
+        
+        if(express_filter == null) {
             // do not filter
             utils.log_info("accept requests from all hosts");
         } else {
             utils.log_info("accept requests from : " + whitelist);
 
             // filter ip range
-            app.use(ipfilter(whitelist, {mode: 'allow'}));
+            app.use(express_filter);
         }
 
-        // start rest
-        app.use(function(req, res, next) {
-            //utils.log_info(req.method + " " + req.url);
-            next();
-        });
-
+        // boot up
         var ug = rest.init(param);
         var rfdCache = new nodeCache({
             stdTTL: 600,

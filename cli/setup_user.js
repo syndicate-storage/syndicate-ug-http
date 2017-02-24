@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+/*
+   Copyright 2016 The Trustees of University of Arizona
+
+   Licensed under the Apache License, Version 2.0 (the "License" );
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+var utils = require('../lib/utils.js');
+var config = require('../lib/config.js');
+var restler = require('restler');
+var minimist = require('minimist');
+var fs = require('fs');
+var async = require('async');
+
+function parse_args(args) {
+    var options = {
+        ms_url: "",
+        user: "",
+        cert_path: "",
+        config_path: "",
+    };
+
+    // skip first two args
+    // 1: node
+    // 2: *.js script
+    var argv = minimist(args.slice(2));
+
+    // parse
+    options.ms_url = argv.m || "";
+    options.user = argv.u || "";
+    options.cert_path = argv.k || "";
+    options.config_path = argv.c || "./config.json";
+    return options;
+}
+
+function check_config(conf) {
+    if(conf.ms_url && conf.user && conf.user_cert_path && conf.hosts && conf.hosts.length > 0) {
+        return true;
+    }
+    return false;
+}
+
+function setup_user(node_host, ms_url, user, cert_path, callback) {
+    // test 
+    var url = util.format("http://%s/setup/user", node_host);
+    fs.stat(cert_path, function(err, stat) {
+        if(err) {
+            utils.log_error(util.format("error occurred - %s", err));
+            callback(util.format("cannot open cert: %s", cert_path), null);
+            return;
+        }
+        
+        restler.post(url, {
+            multipart: true,
+            data: {
+                'ms_url': ms_url,
+                'user': user,
+                'cert': restler.file(cert_path, null, stat.size, null, null)
+            }
+        }).on('complete', function(result, response) {
+            if(result instanceof Error) {
+                console.error(util.format("[%s] %s", node_host, result));
+                callback(result, null);
+            } else {
+                console.error(util.format("[%s] %s", node_host, JSON.stringify(result)));
+                callback(null, node_host);
+            }
+        });
+    });
+}
+
+(function main() {
+    utils.log_info("Setup a user");
+
+    var param = parse_args(process.argv);
+    var conf = config.get_config(param.config_path, {
+        "ms_url": param.ms_url,
+        "user": param.user,
+        "user_cert_path": param.cert_path
+    });
+
+    if(!check_config(conf)) {
+        console.error("arguments are not given properly");
+        process.exit(1);
+    }
+
+    try {
+        var host_list = conf.hosts;
+        var calls = {};
+        
+        host_list.forEach(function(host) {
+            calls[host] = function(callback) {
+                setup_user(host, conf.ms_url, conf.user, conf.user_cert_path, callback);
+            };
+        });
+        
+        async.parallel(calls, function(err, results) {
+            if(err === null) {
+                console.log(util.format("setup a user - %s", conf.user));
+            }
+        });
+    } catch (e) {
+        utils.log_error(util.format("Exception occured: %s", e));
+    }
+})();

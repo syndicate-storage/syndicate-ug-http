@@ -1,0 +1,8 @@
+{
+    "ms_url": "http://demo1.opencloud.cs.arizona.edu:28080",
+    "user": "iychoi@email.arizona.edu",
+    "user_cert_path": "",
+    "volume": "",
+    "gateways": [],
+    "hosts": ["localhost:8888"]
+}

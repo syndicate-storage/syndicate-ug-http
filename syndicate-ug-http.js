@@ -1,4 +1,4 @@
-#!/bin/env node
+#!/usr/bin/env node
 /*
    Copyright 2016 The Trustees of University of Arizona
 
@@ -15,77 +15,65 @@
    limitations under the License.
 */
 
-var rest = require('./rest.js');
-var utils = require('./utils.js');
-var filter = require('./ipfilter.js');
+var rest = require('./lib/rest.js');
+var utils = require('./lib/utils.js');
+var filter = require('./lib/ipfilter.js');
 var express = require('express');
-var nodeCache = require('node-cache');
+var minimist = require('minimist');
+
 var app = express();
+
+function parse_args(args) {
+    var options = {
+        debug_level: 0,
+        port: 8888,
+    };
+
+    // skip first two args
+    // 1: node
+    // 2: *.js script
+    var argv = minimist(args.slice(2));
+
+    // parse
+    options.debug_level = argv.d || 0;
+    if("port" in argv) {
+        options.port = argv.port;
+    } else if("p" in argv) {
+        options.port = argv.p;
+    }
+    options.port = options.port || 8888;
+    
+    return options;
+}
 
 (function main() {
     utils.log_info("Syndicate-UG-HTTP start");
 
-    var args = process.argv.slice(1);
-    var param = utils.parse_args(args);
+    var param = parse_args(process.argv);
 
     try {
-        // read whitelist
-        whitelist = filter.get_white_list();
+        // set ip filter
+        whitelist = filter.get_white_list("./whitelist");
         express_filter = filter.get_express_filter(whitelist);
         
         if(express_filter == null) {
             // do not filter
             utils.log_info("accept requests from all hosts");
         } else {
-            utils.log_info("accept requests from : " + whitelist);
+            utils.log_info(util.format("accept requests from : %s", whitelist));
 
             // filter ip range
             app.use(express_filter);
         }
 
         // boot up
-        var ug = rest.init(param);
-        var rfdCache = new nodeCache({
-            stdTTL: 600,
-            checkperiod: 600,
-            useClones: false
-        });
-
-        rfdCache.on("expired", function(key, fh) {
-            utils.log_debug("closing expired file handle for read - " + key);
-            rest.safeclose(ug, fh);
-        });
-
-        var wfdCache = new nodeCache({
-            stdTTL: 3600,
-            checkperiod: 600,
-            useClones: false
-        });
-
-        wfdCache.on("expired", function(key, fh) {
-            utils.log_debug("closing expired file handle for write - " + key);
-            rest.safeclose(ug, fh);
-        });
-
-        var statistics = {};
-
-        app.use(function(req, res, next) {
-            req.ug = ug;
-            req.rfdCache = rfdCache;
-            req.wfdCache = wfdCache;
-            req.statistics = statistics;
-            next();
-        });
-
-        app.use('/', rest.getRouter());
+        rest.init(app, param);
+        app.use('/', rest.get_router());
 
         app.listen(param.port, function() {
-            utils.log_info("listening at " + param.port);
+            utils.log_info(util.format("listening at %d", param.port));
         });
-
-        // must not shutdown here!
-        //rest.shutdown(ug);
     } catch (e) {
-        utils.log_error("Exception occured: " + e);
+        utils.log_error(util.format("Exception occured: %s", e));
     }
 })();

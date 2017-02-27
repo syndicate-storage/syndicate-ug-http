@@ -9,3 +9,4 @@ mkdirp
 restler
 minimist
 async
+crypto

@@ -1,5 +1,8 @@
 syndicate-drive
 express
+express-session
+passport
+passport-http
 node-cache
 express-ipfilter
 range_check

@@ -21,9 +21,12 @@ var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');
 var async = require('async');
+var prompt = require('prompt');
 
 function parse_args(args) {
     var options = {
+        session_name: "",
+        session_key: "",
         ms_url: "",
         user: "",
         volume: "",
@@ -38,6 +41,8 @@ function parse_args(args) {
     var argv = minimist(args.slice(2));
 
     // parse
+    options.session_name = argv.n || "",
+    options.session_key = argv.k || "",
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
     options.volume = argv.v || "";
@@ -47,15 +52,60 @@ function parse_args(args) {
     return options;
 }
 
+function process_prompt(conf, callback) {
+    prompt.start();
+    var prop = [{
+        description: "Enter session name",
+        type: "string",
+        name: "session_name",
+        required: true,
+        ask: function() {
+            if(conf.session_name == undefined || conf.session_name.length == 0) {
+                return true;
+            }
+            return false;
+        }
+    },
+    {
+        description: "Enter session key",
+        type: "string",
+        name: "session_key",
+        required: true,
+        ask: function() {
+            if(conf.session_key == undefined || conf.session_key.length == 0) {
+                return true;
+            }
+            return false;
+        }
+    }];
+
+    prompt.get(prop, function(err, result) {
+        if(err) {
+            callback(err, null);
+        }
+
+        if(result.session_name) {
+            conf.session_name = result.session_name;
+        }
+        
+        if(result.session_key) {
+            conf.session_key = result.session_key;
+        }
+
+        callback(null, conf);
+    });
+}
+
 function check_config(conf) {
-    if(conf.ms_url && conf.user && conf.volume && conf.hosts && conf.hosts.length > 0) {
+    if(conf.session_name && conf.session_key && 
+        conf.ms_url && conf.user && conf.volume && conf.hosts && conf.hosts.length > 0) {
         if(conf.anonymous) {
             return true;
         } else {
             if(conf.gateways && conf.gateways.length > 0 && 
-            conf.gateway_cert_paths && conf.gateway_cert_paths.length > 0 &&
-            conf.gateways.length == conf.gateway_cert_paths.length &&
-            conf.hosts.length <= conf.gateways.length) {
+                conf.gateway_cert_paths && conf.gateway_cert_paths.length > 0 &&
+                conf.gateways.length == conf.gateway_cert_paths.length &&
+                conf.hosts.length <= conf.gateways.length) {
                 return true;
             }
         }
@@ -80,22 +130,7 @@ function assign_gateways(hosts, gateways, certs) {
     return assignment;
 }
 
-function get_session_key(node_host, callback) {
-    // test 
-    var url = utils.format("http://%s/setup/session", node_host);
-    restler.get(url).on('complete', function(result, response) {
-        if(result instanceof Error) {
-            console.error(util.format("[%s] %s", node_host, result));
-            callback(result, null);
-        } else {
-            var session_key = result.session_key;
-            console.log(util.format("[%s] %s", node_host, JSON.stringify(result)));
-            callback(null, session_key);
-        }
-    });
-}
-
-function setup_gateway(node_host, session_key, ms_url, user, volume, gateway, anonymous, cert_path, callback) {
+function setup_gateway(node_host, session_name, session_key, ms_url, user, volume, gateway, anonymous, cert_path, callback) {
     // test 
     var url = utils.format("http://%s/setup/gateway", node_host);
     var complete_callback = function(result, response) {
@@ -109,6 +144,7 @@ function setup_gateway(node_host, session_key, ms_url, user, volume, gateway, an
     };
 
     var data_object = {
+        'session_name': session_name,
         'session_key': session_key,
         'ms_url': ms_url,
         'user': user,
@@ -145,6 +181,8 @@ function setup_gateway(node_host, session_key, ms_url, user, volume, gateway, an
 
     var param = parse_args(process.argv);
     var conf = config.get_config(param.config_path, {
+        "session_name": param.session_name,
+        "session_key": param.session_key,
         "ms_url": param.ms_url,
         "user": param.user,
         "volume": param.volume,
@@ -155,40 +193,49 @@ function setup_gateway(node_host, session_key, ms_url, user, volume, gateway, an
         var gateway_conf = config.get_config(param.gateway_config_path);
         conf = config.overwrite_config(conf, gateway_conf);
     }
-    
-    if(!check_config(conf)) {
-        console.error("arguments are not given properly");
-        process.exit(1);
-    }
 
     try {
-        var gateway_assignment = assign_gateways(conf.hosts, conf.gateways, conf.gateway_cert_paths);
-        if(gateway_assignment.length <= 0) {
-            console.error("Failed to assign gateways to hosts");
-            process.exit(1);
-        }
-
         async.waterfall([
             function(cb) {
-                // create a session key from one of hosts
-                get_session_key(gateway_assignment[0].host, function(err, data) {
+                process_prompt(conf, function(err, configuration) {
                     if(err) {
-                        console.error("Cannot obtain a new session key");
-                        cb(err, null);
+                        cb(new Error("arguments are not given properly"), null);
                         return;
                     }
-                    var session_key = data;
-                    console.log(utils.format("Obtained a new session key : %s", session_key));
-                    cb(null, session_key);
+
+                    if(!check_config(configuration)) {
+                        cb(new Error("arguments are not given properly"), null);
+                        return;
+                    }
+
+                    cb(null, configuration);
+                    return;
                 });
             },
-            function(session_key, cb) {
-                // register gateways with the session key obtained
+            function(configuration, cb) {
+                var gateway_assignment = assign_gateways(configuration.hosts, configuration.gateways, configuration.gateway_cert_paths);
+                if(gateway_assignment.length <= 0) {
+                    cb(new Error("Failed to assign gateways to hosts"), null);
+                    return;
+                } else {
+                    cb(null, {
+                        configuration: configuration,
+                        gateway_assignment: gateway_assignment
+                    });
+                    return;
+                }
+            },
+            function(result, cb) {
+                // register gateways
                 var calls = {};
-                
+
+                var configuration = result.configuration;
+                var gateway_assignment = result.gateway_assignment;
+
                 gateway_assignment.forEach(function(assignment) {
                     calls[assignment.host] = function(callback) {
-                        setup_gateway(assignment.host, session_key, conf.ms_url, conf.user, conf.volume, assignment.gateway, conf.anonymous, assignment.cert_path, callback);
+                        setup_gateway(assignment.host, configuration.session_name, configuration.session_key, 
+                            configuration.ms_url, configuration.user, configuration.volume, assignment.gateway, conf.anonymous, assignment.cert_path, callback);
                     };
                 });
                 
@@ -198,17 +245,21 @@ function setup_gateway(node_host, session_key, ms_url, user, volume, gateway, an
                         return;
                     }
 
-                    console.log(utils.format("Setup a gateway of a user (%s) and a volume (%s)", conf.user, conf.volume));
+                    console.log(utils.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
+                    console.log(utils.format("Use a session name (%s) to access", configuration.session_name));
                     cb(null, results);
+                    return;
                 });
             }
         ], function(err, data) {
             if(err) {
                 console.error(err);
-                return;
+                process.exit(1);
             }
+            process.exit(0);
         });
     } catch (e) {
         utils.log_error(utils.format("Exception occured: %s", e));
+        process.exit(1);
     }
 })();

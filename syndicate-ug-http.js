@@ -15,6 +15,7 @@
    limitations under the License.
 */
 
+var util = require('util');
 var rest = require('./lib/rest.js');
 var utils = require('./lib/utils.js');
 var filter = require('./lib/ipfilter.js');

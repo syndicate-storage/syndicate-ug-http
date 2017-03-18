@@ -15,6 +15,7 @@
    limitations under the License.
 */
 
+var util = require('util');
 var utils = require('../lib/utils.js');
 var config = require('../lib/config.js');
 var restler = require('restler');

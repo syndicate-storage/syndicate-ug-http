@@ -70,10 +70,10 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
             }
         }).on('complete', function(result, response) {
             if(result instanceof Error) {
-                console.error(util.format("[%s] %s", node_host, result));
+                utils.log_error(util.format("[%s] %s", node_host, result));
                 callback(result, null);
             } else {
-                console.error(util.format("[%s] %s", node_host, JSON.stringify(result)));
+                utils.log_info(util.format("[%s] %s", node_host, JSON.stringify(result)));
                 callback(null, node_host);
             }
         });
@@ -84,14 +84,18 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
     utils.log_info("Setup a user");
 
     var param = parse_args(process.argv);
-    var conf = clientConfig.get_config(param.config_path, {
+    var client_config = clientConfig.get_config(param.config_path, {
         "ms_url": param.ms_url,
         "user": param.user,
         "user_cert_path": param.cert_path
     });
+    if(client_config == null) {
+        utils.log_error("cannot read configuration");
+        process.exit(1);
+    }
 
-    if(!check_config(conf)) {
-        console.error("arguments are not given properly");
+    if(!check_config(client_config)) {
+        utils.log_error("arguments are not given properly");
         process.exit(1);
     }
 
@@ -101,13 +105,13 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
         
         host_list.forEach(function(host) {
             calls[host] = function(callback) {
-                setup_user(host, conf.ms_url, conf.user, conf.user_cert_path, callback);
+                setup_user(host, client_config.ms_url, client_config.user, client_config.user_cert_path, callback);
             };
         });
         
         async.parallel(calls, function(err, results) {
             if(err === null) {
-                console.log(util.format("setup a user - %s", conf.user));
+                utils.log_info(util.format("setup a user - %s", conf.user));
             }
         });
     } catch (e) {

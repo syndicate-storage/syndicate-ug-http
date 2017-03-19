@@ -49,7 +49,7 @@ function parse_args(args) {
     options.volume = argv.v || "";
     options.anonymous = argv.a || false;
     options.gateway_config_path = argv.g || "";
-    options.config_path = argv.i || "./client_config.json";
+    options.config_path = argv.c || "./client_config.json";
     return options;
 }
 
@@ -136,10 +136,10 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
     var url = utils.format("http://%s/setup/gateway", node_host);
     var complete_callback = function(result, response) {
         if(result instanceof Error) {
-            console.error(util.format("[%s] %s", node_host, result));
+            utils.log_error(util.format("[%s] %s", node_host, result));
             callback(result, null);
         } else {
-            console.log(util.format("[%s] %s", node_host, JSON.stringify(result)));
+            utils.log_info(util.format("[%s] %s", node_host, JSON.stringify(result)));
             callback(null, node_host);
         }
     };
@@ -181,7 +181,7 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
     utils.log_info("Setup a gateway");
 
     var param = parse_args(process.argv);
-    var conf = clientConfig.get_config(param.config_path, {
+    var client_config = clientConfig.get_config(param.config_path, {
         "session_name": param.session_name,
         "session_key": param.session_key,
         "ms_url": param.ms_url,
@@ -189,16 +189,20 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
         "volume": param.volume,
         "anonymous": param.anonymous
     });
+    if(client_config == null) {
+        utils.log_error("cannot read configuration");
+        process.exit(1);
+    }
 
     if(param.gateway_config_path) {
-        var gateway_conf = clientConfig.get_config(param.gateway_config_path);
-        conf = clientConfig.overwrite_config(conf, gateway_conf);
+        var gateway_config = clientConfig.get_config(param.gateway_config_path);
+        client_config = clientConfig.overwrite_config(client_config, gateway_config);
     }
 
     try {
         async.waterfall([
             function(cb) {
-                process_prompt(conf, function(err, configuration) {
+                process_prompt(client_config, function(err, configuration) {
                     if(err) {
                         cb(new Error("arguments are not given properly"), null);
                         return;
@@ -246,15 +250,15 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
                         return;
                     }
 
-                    console.log(utils.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
-                    console.log(utils.format("Use a session name (%s) to access", configuration.session_name));
+                    utils.log_info(utils.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
+                    utils.log_info(utils.format("Use a session name (%s) to access", configuration.session_name));
                     cb(null, results);
                     return;
                 });
             }
         ], function(err, data) {
             if(err) {
-                console.error(err);
+                utils.log_error(err);
                 process.exit(1);
             }
             process.exit(0);

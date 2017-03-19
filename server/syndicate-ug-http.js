@@ -43,6 +43,7 @@ function parse_args(args) {
     } else if("p" in argv) {
         options.port = argv.p;
     }
+    options.config_path = argv.c || "./server_config.json";
     
     return options;
 }
@@ -51,8 +52,12 @@ function parse_args(args) {
     utils.log_info("Syndicate-UG-HTTP start");
 
     var param = parse_args(process.argv);
-    var server_config = serverConfig.get_config("./server_config.json", param);
-    
+    var server_config = serverConfig.get_config(param.config_path, param);
+    if(server_config == null) {
+        utils.log_error("cannot read configuration");
+        process.exit(1);
+    }
+
     try {
         // set ip filter
         whitelist = filter.get_white_list("./whitelist");

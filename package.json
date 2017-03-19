@@ -1,0 +1,45 @@
+{
+  "name": "syndicate-drive-ug-http",
+  "version": "0.1.0",
+  "description": "Syndicate drive UG http",
+  "keywords": [
+    "syndicate",
+    "syndicate-drive",
+    "fs",
+    "filesystem",
+    "UG",
+    "REST"
+  ],
+  "author": {
+    "name": "Illyoung Choi",
+    "email": "iychoi@email.arizona.edu",
+    "url": "https://github.com/syndicate-storage/syndicate-ug-http.git"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/syndicate-storage/syndicate-ug-http.git"
+  },
+  "dependencies": {
+    "syndicate-drive": "latest",
+    "express": "latest",
+    "express-session": "latest",
+    "passport": "latest",
+    "passport-http": "latest",
+    "node-cache": "latest",
+    "express-ipfilter": "latest",
+    "range_check": "latest",
+    "multer": "latest",
+    "node-uuid": "latest",
+    "mkdirp": "latest",
+    "restler": "latest",
+    "minimist": "latest",
+    "async": "latest",
+    "crypto": "latest"
+  },
+  "devDependencies": {},
+  "bin": {
+    "syndicate-http-setup-gateway": "setup_gateway.js",
+    "syndicate-http-setup-user": "setup_user.js"
+  }
+}

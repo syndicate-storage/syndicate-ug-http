@@ -7,7 +7,10 @@ all: run
 dep:
 	npm install $(DEPENDENCIES)
 
-run: dep
+install:
+	npm install .
+
+run: install
 	node syndicate-ug-http.js
 	
 clean:

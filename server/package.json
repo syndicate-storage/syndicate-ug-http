@@ -32,14 +32,12 @@
     "multer": "latest",
     "node-uuid": "latest",
     "mkdirp": "latest",
-    "restler": "latest",
     "minimist": "latest",
     "async": "latest",
     "crypto": "latest"
   },
   "devDependencies": {},
   "bin": {
-    "syndicate-http-setup-gateway": "setup_gateway.js",
-    "syndicate-http-setup-user": "setup_user.js"
+    "syndicate-http": "syndicate-ug-http.js"
   }
 }

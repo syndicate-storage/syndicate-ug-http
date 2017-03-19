@@ -16,10 +16,10 @@
 */
 
 var util = require('util');
-var rest = require('./lib/rest.js');
-var utils = require('./lib/utils.js');
-var filter = require('./lib/ipfilter.js');
-var serverConfig = require('./lib/server_config.js');
+var rest = require('./rest.js');
+var utils = require('./utils.js');
+var filter = require('./ipfilter.js');
+var serverConfig = require('./server_config.js');
 var express = require('express');
 var minimist = require('minimist');
 

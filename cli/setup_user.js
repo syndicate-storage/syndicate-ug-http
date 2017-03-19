@@ -16,8 +16,8 @@
 */
 
 var util = require('util');
-var utils = require('../lib/utils.js');
-var clientConfig = require('../lib/client_config.js');
+var utils = require('./utils.js');
+var clientConfig = require('./client_config.js');
 var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');

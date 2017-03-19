@@ -15,10 +15,10 @@
 */
 
 var util = require('util');
-var utils = require('../lib/utils.js');
+var utils = require('./utils.js');
 var fs = require('fs');
 
-var DEFAULT_CONFIG_FILENAME = './server_config.json';
+var DEFAULT_CONFIG_FILENAME = './client_config.json';
 
 function overwrite_config(conf1, conf2) {
     var conf = {};
@@ -50,7 +50,16 @@ function overwrite_config(conf1, conf2) {
 module.exports = {
     get_config: function(config_file, config_ext) {
         var default_config = {
-            "port": 8888
+            "session_name": "",
+            "session_key": "",
+            "ms_url": "",
+            "user": "",
+            "user_cert_path": "",
+            "volume": "",
+            "anonymous": false,
+            "gateways": [],
+            "gateway_cert_paths": [],
+            "hosts": []
         }
 
         var cfile = config_file || DEFAULT_CONFIG_FILENAME;

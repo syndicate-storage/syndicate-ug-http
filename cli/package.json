@@ -1,0 +1,34 @@
+{
+  "name": "syndicate-drive-ug-http-cli",
+  "version": "0.1.0",
+  "description": "Syndicate drive UG http CLI",
+  "keywords": [
+    "syndicate",
+    "syndicate-drive",
+    "fs",
+    "filesystem",
+    "UG",
+    "REST",
+    "CLI"
+  ],
+  "author": {
+    "name": "Illyoung Choi",
+    "email": "iychoi@email.arizona.edu",
+    "url": "https://github.com/syndicate-storage/syndicate-ug-http.git"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/syndicate-storage/syndicate-ug-http.git"
+  },
+  "dependencies": {
+    "restler": "latest",
+    "minimist": "latest",
+    "async": "latest"
+  },
+  "devDependencies": {},
+  "bin": {
+    "syndicate-http-setup-gateway": "setup_gateway.js",
+    "syndicate-http-setup-user": "setup_user.js"
+  }
+}

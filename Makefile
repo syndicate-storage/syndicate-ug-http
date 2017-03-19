@@ -1,17 +1,10 @@
-.PHONY: all dep run clean
+.PHONY: all clean
 
-DEPENDENCIES = `cat DEPENDENCIES`
-
-all: run
-
-dep:
-	npm install $(DEPENDENCIES)
+all: install
 
 install:
-	npm install .
+	npm install -g ./cli/
+	npm install ./server
 
-run: install
-	node syndicate-ug-http.js
-	
 clean:
 	

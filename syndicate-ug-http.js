@@ -19,6 +19,7 @@ var util = require('util');
 var rest = require('./lib/rest.js');
 var utils = require('./lib/utils.js');
 var filter = require('./lib/ipfilter.js');
+var serverConfig = require('./lib/server_config.js');
 var express = require('express');
 var minimist = require('minimist');
 
@@ -27,7 +28,7 @@ var app = express();
 function parse_args(args) {
     var options = {
         debug_level: 0,
-        port: 8888,
+        port: 0,
     };
 
     // skip first two args
@@ -42,7 +43,6 @@ function parse_args(args) {
     } else if("p" in argv) {
         options.port = argv.p;
     }
-    options.port = options.port || 8888;
     
     return options;
 }
@@ -51,7 +51,8 @@ function parse_args(args) {
     utils.log_info("Syndicate-UG-HTTP start");
 
     var param = parse_args(process.argv);
-
+    var server_config = serverConfig.get_config("./server_config.json", param);
+    
     try {
         // set ip filter
         whitelist = filter.get_white_list("./whitelist");
@@ -68,11 +69,11 @@ function parse_args(args) {
         }
 
         // boot up
-        rest.init(app, param);
+        rest.init(app, server_config);
         app.use('/', rest.get_router());
 
-        app.listen(param.port, function() {
-            utils.log_info(util.format("listening at %d", param.port));
+        app.listen(server_config.port, function() {
+            utils.log_info(util.format("listening at %d", server_config.port));
         });
     } catch (e) {
         utils.log_error(util.format("Exception occured: %s", e));

@@ -17,7 +17,7 @@
 
 var util = require('util');
 var utils = require('../lib/utils.js');
-var config = require('../lib/config.js');
+var clientConfig = require('../lib/client_config.js');
 var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');
@@ -49,7 +49,7 @@ function parse_args(args) {
     options.volume = argv.v || "";
     options.anonymous = argv.a || false;
     options.gateway_config_path = argv.g || "";
-    options.config_path = argv.i || "./config.json";
+    options.config_path = argv.i || "./client_config.json";
     return options;
 }
 
@@ -181,7 +181,7 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
     utils.log_info("Setup a gateway");
 
     var param = parse_args(process.argv);
-    var conf = config.get_config(param.config_path, {
+    var conf = clientConfig.get_config(param.config_path, {
         "session_name": param.session_name,
         "session_key": param.session_key,
         "ms_url": param.ms_url,
@@ -191,8 +191,8 @@ function setup_gateway(node_host, session_name, session_key, ms_url, user, volum
     });
 
     if(param.gateway_config_path) {
-        var gateway_conf = config.get_config(param.gateway_config_path);
-        conf = config.overwrite_config(conf, gateway_conf);
+        var gateway_conf = clientConfig.get_config(param.gateway_config_path);
+        conf = clientConfig.overwrite_config(conf, gateway_conf);
     }
 
     try {

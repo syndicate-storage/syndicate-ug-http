@@ -17,7 +17,7 @@
 
 var util = require('util');
 var utils = require('../lib/utils.js');
-var config = require('../lib/config.js');
+var clientConfig = require('../lib/client_config.js');
 var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');
@@ -40,7 +40,7 @@ function parse_args(args) {
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
     options.cert_path = argv.k || "";
-    options.config_path = argv.c || "./config.json";
+    options.config_path = argv.c || "./client_config.json";
     return options;
 }
 
@@ -84,7 +84,7 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
     utils.log_info("Setup a user");
 
     var param = parse_args(process.argv);
-    var conf = config.get_config(param.config_path, {
+    var conf = clientConfig.get_config(param.config_path, {
         "ms_url": param.ms_url,
         "user": param.user,
         "user_cert_path": param.cert_path

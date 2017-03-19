@@ -4,5 +4,5 @@
     "user_cert_path": "",
     "volume": "",
     "gateways": [],
-    "hosts": ["localhost:8888"]
+    "hosts": ["localhost"]
 }

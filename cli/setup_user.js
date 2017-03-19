@@ -45,15 +45,15 @@ function parse_args(args) {
 }
 
 function check_config(conf) {
-    if(conf.ms_url && conf.user && conf.user_cert_path && conf.hosts && conf.hosts.length > 0) {
+    if(conf.ms_url && conf.user && conf.user_cert_path && conf.service_hosts && conf.service_hosts.length > 0 && conf.service_port > 0) {
         return true;
     }
     return false;
 }
 
-function setup_user(node_host, ms_url, user, cert_path, callback) {
+function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
     // test 
-    var url = util.format("http://%s/setup/user", node_host);
+    var url = util.format("http://%s:%d/setup/user", node_host, node_port);
     fs.stat(cert_path, function(err, stat) {
         if(err) {
             utils.log_error(util.format("error occurred - %s", err));
@@ -70,10 +70,10 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
             }
         }).on('complete', function(result, response) {
             if(result instanceof Error) {
-                utils.log_error(util.format("[%s] %s", node_host, result));
+                utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));
                 callback(result, null);
             } else {
-                utils.log_info(util.format("[%s] %s", node_host, JSON.stringify(result)));
+                utils.log_info(util.format("[%s:%d] %s", node_host, node_port, JSON.stringify(result)));
                 callback(null, node_host);
             }
         });
@@ -100,18 +100,19 @@ function setup_user(node_host, ms_url, user, cert_path, callback) {
     }
 
     try {
-        var host_list = conf.hosts;
+        var host_list = client_config.service_hosts;
+        var service_port = client_config.service_port;
         var calls = {};
         
         host_list.forEach(function(host) {
             calls[host] = function(callback) {
-                setup_user(host, client_config.ms_url, client_config.user, client_config.user_cert_path, callback);
+                setup_user(host, service_port, client_config.ms_url, client_config.user, client_config.user_cert_path, callback);
             };
         });
         
         async.parallel(calls, function(err, results) {
             if(err === null) {
-                utils.log_info(util.format("setup a user - %s", conf.user));
+                utils.log_info(util.format("setup a user - %s", client_config.user));
             }
         });
     } catch (e) {

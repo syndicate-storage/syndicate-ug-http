@@ -59,7 +59,8 @@ module.exports = {
             "anonymous": false,
             "gateways": [],
             "gateway_cert_paths": [],
-            "hosts": []
+            "service_hosts": [],
+            "service_port": 8888
         }
 
         var cfile = config_file || DEFAULT_CONFIG_FILENAME;

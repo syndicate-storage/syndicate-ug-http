@@ -319,7 +319,7 @@ module.exports = {
                 function(result, cb) {
                     // register session
                     try {
-                        sessions.create_session(sess, session_name, session_key, ms_url, user, volume, gateway, anonymous, get_configuration_path());
+                        sessions.create_session(sess, session_name, session_key, ms_url, user, volume, gateway, anonymous, syndicateSetup.get_configuration_path(ms_url, user));
                         cb(null, true);
                     } catch (e) {
                         cb(e, null);

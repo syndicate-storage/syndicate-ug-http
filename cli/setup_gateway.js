@@ -31,7 +31,8 @@ function parse_args(args) {
         ms_url: "",
         user: "",
         volume: "",
-        anonymous: "",
+        anonymous: false,
+        anonymous_gateway: "",
         gateway_config_path: "",
         config_path: "",
     };
@@ -42,13 +43,14 @@ function parse_args(args) {
     var argv = minimist(args.slice(2));
 
     // parse
-    options.session_name = argv.n || "",
-    options.session_key = argv.k || "",
+    options.session_name = argv.session_name || "",
+    options.session_key = argv.session_key || "",
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
     options.volume = argv.v || "";
     options.anonymous = argv.a || false;
-    options.gateway_config_path = argv.g || "";
+    options.anonymous_gateway = argv.anonymous_gateway || "";
+    options.gateway_config_path = argv.gateway_conf || "";
     options.config_path = argv.c || "./client_config.json";
     return options;
 }
@@ -101,7 +103,9 @@ function check_config(conf) {
     if(conf.session_name && conf.session_key && 
         conf.ms_url && conf.user && conf.volume && conf.service_hosts && conf.service_hosts.length > 0 && conf.service_port > 0) {
         if(conf.anonymous) {
-            return true;
+            if(conf.gateways && conf.gateways.length == 1) {
+                return true;
+            }
         } else {
             if(conf.gateways && conf.gateways.length > 0 && 
                 conf.gateway_cert_paths && conf.gateway_cert_paths.length > 0 &&
@@ -114,14 +118,22 @@ function check_config(conf) {
     return false;
 }
 
-function assign_gateways(hosts, gateways, certs) {
+function assign_gateways(anonymous, hosts, gateways, certs) {
     var len = hosts.length;
     var assignment = [];
     for(var i=0;i<len;i++) {
         var host = hosts[i];
-        var gateway = gateways[i];
-        var cert = certs[i];
+        var gateway;
+        var cert;
 
+        if(anonymous) {
+            gateway = gateways[0];
+            cert = null;
+        } else {
+            gateway = gateways[i];
+            cert = certs[i];
+        }
+        
         assignment.push({
             "host": host,
             "gateway": gateway,
@@ -133,7 +145,7 @@ function assign_gateways(hosts, gateways, certs) {
 
 function setup_gateway(node_host, node_port, session_name, session_key, ms_url, user, volume, gateway, anonymous, cert_path, callback) {
     // test 
-    var url = utils.format("http://%s:%d/setup/gateway", node_host, node_port);
+    var url = util.format("http://%s:%d/setup/gateway", node_host, node_port);
     var complete_callback = function(result, response) {
         if(result instanceof Error) {
             utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));
@@ -181,13 +193,19 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
     utils.log_info("Setup a gateway");
 
     var param = parse_args(process.argv);
+    var gateways = [];
+    if(param.anonymous) {
+        gateways.push(param.anonymous_gateway);
+    }
+
     var client_config = clientConfig.get_config(param.config_path, {
         "session_name": param.session_name,
         "session_key": param.session_key,
         "ms_url": param.ms_url,
         "user": param.user,
         "volume": param.volume,
-        "anonymous": param.anonymous
+        "anonymous": param.anonymous,
+        "gateways": gateways
     });
     if(client_config == null) {
         utils.log_error("cannot read configuration");
@@ -218,7 +236,7 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
                 });
             },
             function(configuration, cb) {
-                var gateway_assignment = assign_gateways(configuration.service_hosts, configuration.gateways, configuration.gateway_cert_paths);
+                var gateway_assignment = assign_gateways(configuration.anonymous, configuration.service_hosts, configuration.gateways, configuration.gateway_cert_paths);
                 if(gateway_assignment.length <= 0) {
                     cb(new Error("Failed to assign gateways to hosts"), null);
                     return;
@@ -240,7 +258,7 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
                 gateway_assignment.forEach(function(assignment) {
                     calls[assignment.host] = function(callback) {
                         setup_gateway(assignment.host, configuration.service_port, configuration.session_name, configuration.session_key, 
-                            configuration.ms_url, configuration.user, configuration.volume, assignment.gateway, conf.anonymous, assignment.cert_path, callback);
+                            configuration.ms_url, configuration.user, configuration.volume, assignment.gateway, configuration.anonymous, assignment.cert_path, callback);
                     };
                 });
                 
@@ -250,8 +268,8 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
                         return;
                     }
 
-                    utils.log_info(utils.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
-                    utils.log_info(utils.format("Use a session name (%s) to access", configuration.session_name));
+                    utils.log_info(util.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
+                    utils.log_info(util.format("Use a session name (%s) to access", configuration.session_name));
                     cb(null, results);
                     return;
                 });
@@ -264,7 +282,7 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
             process.exit(0);
         });
     } catch (e) {
-        utils.log_error(utils.format("Exception occured: %s", e));
+        utils.log_error(util.format("Exception occured: %s", e));
         process.exit(1);
     }
 })();

@@ -24,7 +24,8 @@
   "dependencies": {
     "restler": "latest",
     "minimist": "latest",
-    "async": "latest"
+    "async": "latest",
+    "prompt": "latest"
   },
   "devDependencies": {},
   "bin": {

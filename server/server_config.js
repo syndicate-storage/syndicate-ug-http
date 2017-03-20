@@ -27,7 +27,7 @@ function overwrite_config(conf1, conf2) {
     for(key in conf2) {
         var overwrite = false;
         var val = conf2[key];
-        if(typeof val == "string" || typeof val == "array") {
+        if(typeof val == "string" || typeof val == "object" || typeof val == "array") {
             if(val.length > 0) {
                 overwrite = true;
             }

@@ -121,8 +121,8 @@ function get_field(field, options, body) {
         field_val = options[field];
     }
 
-    if(field in req.body) {
-        field_val = body[ms_url];
+    if(field in body) {
+        field_val = body[field];
     }
 
     if(field_val !== null && field_val.length !== 0) {

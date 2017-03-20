@@ -27,7 +27,7 @@ function parse_args(args) {
     var options = {
         ms_url: "",
         user: "",
-        cert_path: "",
+        user_cert_path: "",
         config_path: "",
     };
 
@@ -39,7 +39,7 @@ function parse_args(args) {
     // parse
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
-    options.cert_path = argv.k || "";
+    options.user_cert_path = argv.k || "";
     options.config_path = argv.c || "./client_config.json";
     return options;
 }
@@ -87,7 +87,7 @@ function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
     var client_config = clientConfig.get_config(param.config_path, {
         "ms_url": param.ms_url,
         "user": param.user,
-        "user_cert_path": param.cert_path
+        "user_cert_path": param.user_cert_path
     });
     if(client_config == null) {
         utils.log_error("cannot read configuration");

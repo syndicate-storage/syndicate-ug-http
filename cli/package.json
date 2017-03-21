@@ -25,7 +25,8 @@
     "restler": "latest",
     "minimist": "latest",
     "async": "latest",
-    "prompt": "latest"
+    "prompt": "latest",
+    "username": "latest"
   },
   "devDependencies": {},
   "bin": {

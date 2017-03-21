@@ -36,11 +36,13 @@ function syndicate_setup(ms_url, user, conf_dir, cert_path, callback) {
                     suser1\@syndicate.org.pkey \
                     http://demo1.opencloud.cs.arizona.edu:28080
     */
+    utils.log_info(util.format("setting up a syndicate user %s", user));
     // remove if already exists
     utils.remove_dir_recursively_sync(conf_dir);
 
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
     var cmd = util.format("syndicate -d --trust_public_key -c %s setup %s %s %s", conf_file, user, cert_path, ms_url);
+    utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {
             // in this case, it may leave dirties
@@ -59,8 +61,11 @@ function syndicate_import_gateway(conf_dir, cert_path, callback) {
                 import_gateway \
                 suser1\@syndicate.org
     */
+    utils.log_info("importing a syndicate gateway");
+
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
     var cmd = util.format("syndicate -d -c %s import_gateway %s", conf_file, cert_path);
+    utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {
             callback(error, null);
@@ -77,8 +82,11 @@ function syndicate_reload_user(user, conf_dir, callback) {
                 reload_user_cert \
                 suser1@syndicate.org
     */
+    utils.log_info(util.format("reloading a syndicate user %s", user));
+
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
     var cmd = util.format("syndicate -d -c %s reload_user_cert %s", conf_file, user);
+    utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {
             callback(error, null);
@@ -95,8 +103,11 @@ function syndicate_reload_volume(volume, conf_dir, callback) {
                 reload_volume_cert \
                 volume
     */
+    utils.log_info(util.format("reloading a syndicate volume %s", volume));
+
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
     var cmd = util.format("syndicate -d -c %s reload_volume_cert %s", conf_file, volume);
+    utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {
             callback(error, null);
@@ -113,8 +124,11 @@ function syndicate_reload_gateway(gateway, conf_dir, callback) {
                 reload_gateway_cert \
                 gateway
     */
+    utils.log_info(util.format("reloading a syndicate gateway %s", gateway));
+
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
     var cmd = util.format("syndicate -d -c %s reload_gateway_cert %s", conf_file, gateway);
+    utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {
             callback(error, null);

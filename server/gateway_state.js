@@ -41,7 +41,8 @@ module.exports = {
     // create a new gateway state
     create: function(user, volume, gateway, config_path) {
         utils.log_debug("INIT: calling syndicate.create_opts");
-        var opts = syndicate.create_opts(user, volume, gateway, 0, config_path);
+        var conf_file = util.format("%s/syndicate.conf", config_path);
+        var opts = syndicate.create_opts(user, volume, gateway, 0, conf_file);
         
         // init UG
         utils.log_debug("INIT: calling syndicate.init");
@@ -63,7 +64,7 @@ module.exports = {
             user: user,
             volume: volume,
             gateway: gateway,
-            config_path: config_path,
+            config_path: conf_file,
             opts: opts,
             ug: ug,
             fd_map: fd_map,

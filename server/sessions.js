@@ -95,7 +95,7 @@ module.exports = {
         } else {
             // verify key
             if(session.key === session_key) {
-                callback(null, session);
+                callback(null, session_name);
             } else {
                 callback(null, false, {
                     message: util.format("Wrong session_key for a session - %s", session_name)

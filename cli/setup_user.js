@@ -41,7 +41,29 @@ function parse_args(args) {
     options.user = argv.u || "";
     options.user_cert_path = argv.k || "";
     options.config_path = argv.c || "./client_config.json";
+
+    if(options.user == "") {
+        options.user = extract_user_from_cert(options.user_cert_path);
+    }
     return options;
+}
+
+function extract_user_from_cert(cert_path) {
+    if(cert_path.indexOf("@") >= 0) {
+        // correct user format
+        var idx = cert_path.lastIndexOf("/");
+        if(idx >= 0) {
+            cert_path = cert_path.substring(idx + 1);
+        }
+
+        if(cert_path.endsWith(".pkey")) {
+            // if it's a pkey file
+            return cert_path.substring(0, cert_path.length - 5);
+        } else {
+            return cert_path;
+        }
+    }
+    return null;
 }
 
 function check_config(conf) {

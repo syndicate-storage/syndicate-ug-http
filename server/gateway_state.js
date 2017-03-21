@@ -84,7 +84,7 @@ module.exports = {
             var stat = gateway_state.fd_map.get(key);
             if(stat !== null) {
                 safe_close_fh(gateway_state.ug, stat.fh);
-                utils.log_debug(util.format("file handle closed - fh(%d), path(%s), flag(%s)", stat.fh, stat.path, stat.flag));
+                utils.log_debug(util.format("file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
             }
             
             gateway_state.fd_map.del(key);

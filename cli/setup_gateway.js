@@ -312,11 +312,13 @@ function is_hadoop_available() {
                         var hadoop_user = username.sync();
                         setup_hadoop_credential(hadoop_user, configuration.session_name, configuration.session_key, function(err, data) {
                             if(err) {
-                                utils.log_error(util.format("Could not setup hadoop credential: %s", err));
+                                utils.log_error(util.format("Could not setup a hadoop credential: %s", err));
                                 return;
                             }
-                            utils.log_info(util.format("Successfully setup hadoop credential: %s", configuration.session_name));
+                            utils.log_info(util.format("Successfully setup a hadoop credential: %s", configuration.session_name));
                         });
+                    } else {
+                        utils.log_info("Hadoop is not accessible - ignoring setting up a hadoop credential");
                     }
 
                     cb(null, results);

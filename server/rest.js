@@ -343,7 +343,7 @@ module.exports = {
          * HTTP GET: readdir/read/stat/follow operations
          */
         var r_get = function(req, res) {
-            var session_name = req.user;
+            var session_name = req.user.name;
             var options = req.query;
             var path = req.target;
             var session = sessions.get_session(req.sessions, session_name);
@@ -756,7 +756,7 @@ module.exports = {
          * HTTP POST: write/mkdir operations
          */
         var r_post = function(req, res) {
-            var session_name = req.user;
+            var session_name = req.user.name;
             var options = req.query;
             var path = req.target;
             var session = sessions.get_session(req.sessions, session_name);
@@ -1166,7 +1166,7 @@ module.exports = {
          * HTTP DELETE: unlink operations
          */
         var r_delete = function(req, res) {
-            var session_name = req.user;
+            var session_name = req.user.name;
             var options = req.query;
             var path = extracted.path;
             var session = sessions.get_session(req.sessions, session_name);

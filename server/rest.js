@@ -636,7 +636,7 @@ module.exports = {
                         // using the fd
                         // stateful
                         var fd = options.fd;
-                        var stat = gatewayState.stat_read_file_handle(gateway_state, fd);
+                        var stat = gatewayState.stat_file_handle(gateway_state, fd);
                         if(stat === null) {
                             throw new Error(util.format("unable to find a file handle for %d", fd));
                         }
@@ -1168,7 +1168,7 @@ module.exports = {
         var r_delete = function(req, res) {
             var session_name = req.user.name;
             var options = req.query;
-            var path = extracted.path;
+            var path = req.target;
             var session = sessions.get_session(req.sessions, session_name);
             if(session === null) {
                 // session not exist

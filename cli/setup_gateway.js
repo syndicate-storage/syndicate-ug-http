@@ -24,6 +24,8 @@ var fs = require('fs');
 var async = require('async');
 var prompt = require('prompt');
 var username = require('username');
+var exec = require('child_process').exec;
+var execSync = require('child_process').execSync;
 
 function parse_args(args) {
     var options = {

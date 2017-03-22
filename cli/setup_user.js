@@ -75,7 +75,7 @@ function check_config(conf) {
 
 function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
     // test 
-    var url = util.format("http://%s:%d/setup/user", node_host, node_port);
+    var url = util.format("http://%s:%d/user/setup", node_host, node_port);
     fs.stat(cert_path, function(err, stat) {
         if(err) {
             utils.log_error(util.format("error occurred - %s", err));

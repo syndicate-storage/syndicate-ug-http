@@ -82,7 +82,7 @@ module.exports = {
         for(key in gateway_state.fd_map) {
             utils.log_debug(util.format("closing a missing file handle - %s", key));
             var stat = gateway_state.fd_map.get(key);
-            if(stat !== null) {
+            if(stat) {
                 safe_close_fh(gateway_state.ug, stat.fh);
                 utils.log_debug(util.format("file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
             }
@@ -160,7 +160,7 @@ module.exports = {
         utils.log_debug(util.format("closing a file handle - %s", fd));
 
         var stat = gateway_state.fd_map.get(fd);
-        if(stat !== null) {
+        if(stat) {
             utils.log_debug(util.format("file handle closed - fh(%d), path(%s), flag(%s)", stat.fh, stat.path, stat.flag));
         }
         

@@ -176,7 +176,7 @@ module.exports = {
         });
 
         // user setup
-        router.post('/setup/user', upload.single('cert'), function(req, res) {
+        router.post('/user/setup', upload.single('cert'), function(req, res) {
             var options = req.query;
             var sess = req.sessions;
             
@@ -233,7 +233,7 @@ module.exports = {
         });
         
         // gateway setup
-        router.post('/setup/gateway', upload.single('cert'), function(req, res) {
+        router.post('/gateway/setup', upload.single('cert'), function(req, res) {
             var options = req.query;
             var sess = req.sessions;
 
@@ -333,6 +333,46 @@ module.exports = {
                 
                 return_boolean(req, res, true);
             });
+        });
+
+        // user setup
+        router.get('/sessions', function(req, res) {
+            var options = req.query;
+            var path = req.target;
+            var sess = req.sessions;
+            
+            if(options.list !== undefined) {
+                // list: ?list
+                try {
+                    utils.log_debug(util.format("LIST: calling sessions.list_sessions - %s", path));
+                    var entries = sessions.list_sessions(sess);
+                    var json_obj = {
+                        sessions: entries
+                    };
+                    return_data(req, res, json_obj);
+                } catch (ex) {
+                    return_error(req, res, ex);
+                }
+            } else if(options.list_async !== undefined) {
+                // list_async: ?list_async
+                try {
+                    utils.log_debug(util.format("LIST_ASYNC: calling sessions.list_sessions_async - %s", path));
+                    sessions.list_sessions_async(sess, function(err, entries) {
+                        if(err) {
+                            return_error(req, res, err);
+                            return;
+                        }
+
+                        var json_obj = {
+                            sessions: entries
+                        };
+
+                        return_data(req, res, json_obj);
+                    });
+                } catch (ex) {
+                    return_error(req, res, ex);
+                }
+            }
         });
 
         /*

@@ -79,6 +79,36 @@ module.exports = {
             sessions.del(session_name);
         }
     },
+    list_sessions: function(sessions) {
+        var result = [];
+        var key;
+        for(key in sessions) {
+            var session = sessions.get(key);
+            if(session) {
+                var obj = {
+                    name: session.name,
+                    user: session.user
+                };
+                result.push(obj);
+            }
+        }
+        return result;
+    },
+    list_sessions_async: function(sessions, callback) {
+        var result = [];
+        var key;
+        for(key in sessions) {
+            var session = sessions.get(key);
+            if(session) {
+                var obj = {
+                    name: session.name,
+                    user: session.user
+                };
+                result.push(obj);
+            }
+        }
+        callback(null, result);
+    },
     get_session: function(sessions, session_name) {
         var session = sessions.get(session_name);
         if(session === undefined) {

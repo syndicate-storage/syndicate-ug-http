@@ -148,7 +148,7 @@ function assign_gateways(anonymous, hosts, gateways, certs) {
 
 function setup_gateway(node_host, node_port, session_name, session_key, ms_url, user, volume, gateway, anonymous, cert_path, callback) {
     // test 
-    var url = util.format("http://%s:%d/setup/gateway", node_host, node_port);
+    var url = util.format("http://%s:%d/gateway/setup", node_host, node_port);
     var complete_callback = function(result, response) {
         if(result instanceof Error) {
             utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));

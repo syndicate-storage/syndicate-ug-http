@@ -78,8 +78,10 @@ module.exports = {
     destroy: function(gateway_state) {
         // destroy
         // close all files opened
-        var key;
-        for(key in gateway_state.fd_map) {
+        var keys = gateway_state.fd_map.keys();
+        var i;
+        for(i=0;i<keys.length;i++) {
+            var key = keys[i];
             utils.log_debug(util.format("closing a missing file handle - %s", key));
             var stat = gateway_state.fd_map.get(key);
             if(stat) {

@@ -81,8 +81,10 @@ module.exports = {
     },
     list_sessions: function(sessions) {
         var result = [];
-        var key;
-        for(key in sessions) {
+        var keys = sessions.keys();
+        var i;
+        for(i=0;i<keys.length;i++) {
+            var key = keys[i];
             var session = sessions.get(key);
             if(session) {
                 var obj = {
@@ -96,8 +98,10 @@ module.exports = {
     },
     list_sessions_async: function(sessions, callback) {
         var result = [];
-        var key;
-        for(key in sessions) {
+        var keys = sessions.keys();
+        var i;
+        for(i=0;i<keys.length;i++) {
+            var key = keys[i];
             var session = sessions.get(key);
             if(session) {
                 var obj = {

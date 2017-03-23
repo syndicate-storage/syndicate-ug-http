@@ -89,7 +89,8 @@ module.exports = {
             if(session) {
                 var obj = {
                     name: session.name,
-                    user: session.user
+                    user: session.user,
+                    volume: session.volume
                 };
                 result.push(obj);
             }
@@ -106,7 +107,8 @@ module.exports = {
             if(session) {
                 var obj = {
                     name: session.name,
-                    user: session.user
+                    user: session.user,
+                    volume: session.volume
                 };
                 result.push(obj);
             }

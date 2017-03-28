@@ -20,17 +20,25 @@ var syndicate = require('syndicate-drive');
 var nodeCache = require('node-cache');
 
 function safe_close_fh(ug, fh) {
-    if(ug) {
-        utils.log_debug("SAFECLOSE: calling syndicate.close");
-        syndicate.close(ug, fh);
+    try {
+        if(ug) {
+            utils.log_debug("SAFECLOSE: calling syndicate.close");
+            syndicate.close(ug, fh);
+        }
+    } catch (ex) {
+        utils.log_error(util.format("SAFECLOSE: exception occured: %s", ex));
     }
 }
 
 function safe_close_gateway(ug) {
-    if(ug) {
-        // shutdown UG
-        utils.log_debug("SHUTDOWN: calling syndicate.shutdown");
-        syndicate.shutdown(ug);
+    try {
+        if(ug) {
+            // shutdown UG
+            utils.log_debug("SHUTDOWN: calling syndicate.shutdown");
+            syndicate.shutdown(ug);
+        }
+    } catch (ex) {
+        utils.log_error(util.format("SHUTDOWN: exception occured: %s", ex));
     }
 }
 

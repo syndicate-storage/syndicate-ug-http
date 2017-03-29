@@ -60,16 +60,21 @@ module.exports = {
         }
 
         utils.log_debug(util.format("creating a session - MS(%s) / U(%s) / V(%s) / G(%s) / A(%s)", ms_url, user, volume, gateway, anonymous));
-        sessions.set(session_name, {
-            name: session_name,
-            key: session_key,
-            ms_url: ms_url,
-            user: user,
-            volume: volume,
-            gateway: gateway,
-            anonymous: anonymous,
-            gateway_state: gatewayState.create(auser, volume, gateway, config_path),
-        });
+        var state = gatewayState.create(auser, volume, gateway, config_path)
+        if(state) {
+            sessions.set(session_name, {
+                name: session_name,
+                key: session_key,
+                ms_url: ms_url,
+                user: user,
+                volume: volume,
+                gateway: gateway,
+                anonymous: anonymous,
+                gateway_state: state,
+            });
+        } else {
+            throw new Error(util.format("could not create a gateway state - MS(%s) / U(%s) / V(%s) / G(%s) / A(%s)", ms_url, user, volume, gateway, anonymous));
+        }
     },
     destroy_session: function(sessions, session_name) {
         var session = sessions.get(session_name);

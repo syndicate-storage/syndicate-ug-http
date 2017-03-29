@@ -48,39 +48,44 @@ function safe_close_gateway(ug) {
 module.exports = {
     // create a new gateway state
     create: function(user, volume, gateway, config_path) {
-        utils.log_debug("INIT: calling syndicate.create_opts");
-        var conf_file = util.format("%s/syndicate.conf", config_path);
-        var opts = syndicate.create_opts(user, volume, gateway, 0, conf_file);
-        
-        // init UG
-        utils.log_debug("INIT: calling syndicate.init");
-        var ug = syndicate.init(opts);
-        
-        // setup state
-        var fd_map = new nodeCache({
-            stdTTL: 3600,
-            checkperiod: 600,
-            useClones: false
-        });
+        try {
+            utils.log_debug("create: calling syndicate.create_opts");
+            var conf_file = util.format("%s/syndicate.conf", config_path);
+            var opts = syndicate.create_opts(user, volume, gateway, 0, conf_file);
 
-        fd_map.on("expired", function(key, fh) {
-            utils.log_debug(util.format("closing an expired file handle - %s", key));
-            safe_close_fh(ug, fh);
-        });
-        
-        var gateway_state = {
-            user: user,
-            volume: volume,
-            gateway: gateway,
-            config_path: conf_file,
-            opts: opts,
-            ug: ug,
-            fd_map: fd_map,
-            last_fd: 0,
-            io_statistics: {},
-        };
-        
-        return gateway_state;
+            // init UG
+            utils.log_debug("create: calling syndicate.init");
+            var ug = syndicate.init(opts);
+
+            // setup state
+            var fd_map = new nodeCache({
+                stdTTL: 3600,
+                checkperiod: 600,
+                useClones: false
+            });
+
+            fd_map.on("expired", function(key, fh) {
+                utils.log_debug(util.format("closing an expired file handle - %s", key));
+                safe_close_fh(ug, fh);
+            });
+
+            var gateway_state = {
+                user: user,
+                volume: volume,
+                gateway: gateway,
+                config_path: conf_file,
+                opts: opts,
+                ug: ug,
+                fd_map: fd_map,
+                last_fd: 0,
+                io_statistics: {},
+            };
+
+            return gateway_state;
+        } catch (ex) {
+            utils.log_error(util.format("create: exception occured: %s", ex));
+            return null;
+        }
     },
     // destroy a gateway state
     destroy: function(gateway_state) {
@@ -90,11 +95,11 @@ module.exports = {
         var i;
         for(i=0;i<keys.length;i++) {
             var key = keys[i];
-            utils.log_debug(util.format("closing a missing file handle - %s", key));
+            utils.log_debug(util.format("destroy: closing a missing file handle - %s", key));
             var stat = gateway_state.fd_map.get(key);
             if(stat) {
                 safe_close_fh(gateway_state.ug, stat.fh);
-                utils.log_debug(util.format("file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
+                utils.log_debug(util.format("destroy: file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
             }
             
             gateway_state.fd_map.del(key);
@@ -155,7 +160,7 @@ module.exports = {
     create_file_handle: function(gateway_state, path, fh, flag) {
         gateway_state.last_fd++;
         var fd = gateway_state.last_fd;
-        utils.log_debug(util.format("generate a new file handle - %d", fd));
+        utils.log_debug(util.format("create_file_handle: generate a new file handle - %d", fd));
 
         gateway_state.fd_map.set(fd, {
             'fd': fd,
@@ -167,11 +172,11 @@ module.exports = {
         return fd;
     },
     destroy_file_handle: function(gateway_state, fd) {
-        utils.log_debug(util.format("closing a file handle - %s", fd));
+        utils.log_debug(util.format("destroy_file_handle: closing a file handle - %s", fd));
 
         var stat = gateway_state.fd_map.get(fd);
         if(stat) {
-            utils.log_debug(util.format("file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
+            utils.log_debug(util.format("destroy_file_handle: file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
         }
         
         gateway_state.fd_map.del(fd);

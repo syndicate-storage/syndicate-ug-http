@@ -206,7 +206,9 @@ function setup_hadoop_credential(hadoop_user, session_name, session_key, callbac
     utils.log_info(util.format("setting up a hadoop credential for %s", session_name));
     
     var provider_path = util.format("jceks://hdfs/user/%s/.syndicate/hsyndicate.jceks", hadoop_user);
-    var cmd = util.format("hadoop credential create %s -v %s -provider %s", session_name, session_key, provider_path);
+    var name_pattern = util.format("fs.hsyndicate.session.%s.key", session_name);
+
+    var cmd = util.format("hadoop credential create %s -v %s -provider %s", name_pattern, session_key, provider_path);
     utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {

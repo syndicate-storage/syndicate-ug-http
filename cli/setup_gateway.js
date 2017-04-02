@@ -142,6 +142,8 @@ function assign_gateways(anonymous, hosts, gateways, certs) {
             "gateway": gateway,
             "cert_path": cert,
         });
+
+        utils.log_info(util.format("assign %s - gateway (%s) cert (%s)", host, gateway, cert));
     }
     return assignment;
 }
@@ -159,20 +161,18 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
         }
     };
 
-    var data_object = {
-        'session_name': session_name,
-        'session_key': session_key,
-        'ms_url': ms_url,
-        'user': user,
-        'volume': volume,
-        'gateway': gateway,
-        'anonymous': anonymous
-    };
-
     if(anonymous) {
         restler.post(url, {
             multipart: true,
-            data: data_object
+            data: {
+                'session_name': session_name,
+                'session_key': session_key,
+                'ms_url': ms_url,
+                'user': user,
+                'volume': volume,
+                'gateway': gateway,
+                'anonymous': 'true'
+            }
         }).on('complete', complete_callback);
     } else {
         fs.stat(cert_path, function(err, stat) {
@@ -181,12 +181,19 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
                 callback(util.format("Cannot open cert: %s", cert_path), null);
                 return;
             }
-
-            data_object["cert"] = restler.file(cert_path, null, stat.size, null, null);
             
             restler.post(url, {
                 multipart: true,
-                data: data_object
+                data: {
+                    'session_name': session_name,
+                    'session_key': session_key,
+                    'ms_url': ms_url,
+                    'user': user,
+                    'volume': volume,
+                    'gateway': gateway,
+                    'anonymous': 'false',
+                    'cert': restler.file(cert_path, null, stat.size, null, null)
+                }
             }).on('complete', complete_callback);
         });
     }
@@ -254,7 +261,7 @@ function is_hadoop_available() {
     }
 
     if(param.gateway_config_path) {
-        var gateway_config = clientConfig.get_config(param.gateway_config_path);
+        var gateway_config = clientConfig.get_config_without_default(param.gateway_config_path);
         client_config = clientConfig.overwrite_config(client_config, gateway_config);
     }
 
@@ -303,7 +310,8 @@ function is_hadoop_available() {
                     };
                 });
                 
-                async.parallel(calls, function(err, results) {
+                async.series(calls, function(err, results) {
+                //async.parallel(calls, function(err, results) {
                     if(err) {
                         cb(err, null);
                         return;

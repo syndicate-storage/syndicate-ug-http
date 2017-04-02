@@ -64,7 +64,7 @@ function syndicate_import_gateway(conf_dir, cert_path, callback) {
     utils.log_info("importing a syndicate gateway");
 
     var conf_file = util.format("%s/syndicate.conf", conf_dir);
-    var cmd = util.format("syndicate -d -c %s import_gateway %s", conf_file, cert_path);
+    var cmd = util.format("syndicate -d -c %s import_gateway %s force", conf_file, cert_path);
     utils.log_debug(cmd);
     var child = exec(cmd, function(error, stdout, stderr) {
         if (error) {

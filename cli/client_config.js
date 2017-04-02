@@ -84,6 +84,22 @@ module.exports = {
         }
         return config;
     },
+    get_config_without_default: function(config_file) {
+        var config_str = "";
+
+        try {
+            config_str = fs.readFileSync(config_file, 'utf8');
+        } catch (e) {
+            utils.log_error(util.format("Cannot read config file : %s", config_file));
+            return null;
+        }
+        
+        var config = {};
+        if(utils.is_json_string(config_str)) {
+            config = JSON.parse(config_str);
+        }
+        return config;
+    },
     overwrite_config: function(conf1, conf2) {
         return overwrite_config(conf1, conf2);
     }

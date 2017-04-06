@@ -310,8 +310,8 @@ function is_hadoop_available() {
                     };
                 });
                 
-                async.series(calls, function(err, results) {
-                //async.parallel(calls, function(err, results) {
+                //async.series(calls, function(err, results) {
+                async.parallel(calls, function(err, results) {
                     if(err) {
                         cb(err, null);
                         return;

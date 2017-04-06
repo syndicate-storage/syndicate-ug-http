@@ -930,7 +930,7 @@ module.exports = {
 
                         req.on('end', function() {
                             try {
-                                var stat = gatewayState.stat_write_file_handle(gateway_state, fd);
+                                var stat = gatewayState.stat_file_handle(gateway_state, fd);
                                 if(stat === null) {
                                     return_error(req, res, new Error(util.format("unable to find a file handle for %d", fd)));
                                     return;
@@ -1072,7 +1072,7 @@ module.exports = {
                         });
 
                         req.on('end', function() {
-                            var stat = gatewayState.stat_write_file_handle(gateway_state, fd);
+                            var stat = gatewayState.stat_file_handle(gateway_state, fd);
                             if(stat === null) {
                                 return_error(req, res, new Error(util.format("unable to find a file handle for %d", fd)));
                                 return;

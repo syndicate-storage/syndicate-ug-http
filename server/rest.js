@@ -372,6 +372,66 @@ module.exports = {
                 } catch (ex) {
                     return_error(req, res, ex);
                 }
+            } else if(options.statvfs !== undefined) {
+                // statvfs: ?statvfs&session=xxx
+                var session_name = options.session;
+                var session = sessions.get_session(req.sessions, session_name);
+                if(session === null) {
+                    // session not exist
+                    return_forbidden(req, res, util.format("cannot retrieve a session - %s", session_name));
+                    return;
+                }
+
+                var gateway_state = session.gateway_state;
+                if(gateway_state === null) {
+                    // session not exist
+                    return_forbidden(req, res, util.format("cannot retrieve a gateawy - %s", session_name));
+                    return;
+                }
+                
+                var ug = gateway_state.ug;
+
+                try {
+                    utils.log_debug("STATVFS: calling syndicate.statvfs");
+                    var ret = syndicate.statvfs(ug);
+                    return_data(req, res, ret);
+                } catch (ex) {
+                    return_error(req, res, ex);
+                }
+            } else if(options.statvfs_async !== undefined) {
+                // statvfs_async: ?statvfs_async&session=xxx
+                var session_name = options.session;
+                var session = sessions.get_session(req.sessions, session_name);
+                if(session === null) {
+                    // session not exist
+                    return_forbidden(req, res, util.format("cannot retrieve a session - %s", session_name));
+                    return;
+                }
+
+                var gateway_state = session.gateway_state;
+                if(gateway_state === null) {
+                    // session not exist
+                    return_forbidden(req, res, util.format("cannot retrieve a gateawy - %s", session_name));
+                    return;
+                }
+
+                var ug = gateway_state.ug;
+
+                try {
+                    utils.log_debug("STATVFS_ASYNC: calling syndicate.statvfs_async");
+                    syndicate.statvfs_async(ug, function(err, statvfs) {
+                        if(err) {
+                            return_error(req, res, err);
+                            return;
+                        }
+
+                        return_data(req, res, statvfs);
+                    });
+                } catch (ex) {
+                    return_error(req, res, ex);
+                }
+            } else {
+                res.status(403).send();
             }
         });
 
@@ -389,14 +449,14 @@ module.exports = {
             var session = sessions.get_session(req.sessions, session_name);
             if(session === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a session from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a session - %s", session_name));
                 return;
             }
 
             var gateway_state = session.gateway_state;
             if(gateway_state === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a gateawy from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a gateawy - %s", session_name));
                 return;
             }
             
@@ -802,14 +862,14 @@ module.exports = {
             var session = sessions.get_session(req.sessions, session_name);
             if(session === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a session from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a session - %s", session_name));
                 return;
             }
 
             var gateway_state = session.gateway_state;
             if(gateway_state === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a gateawy from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a gateawy - %s", session_name));
                 return;
             }
             
@@ -1212,14 +1272,14 @@ module.exports = {
             var session = sessions.get_session(req.sessions, session_name);
             if(session === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a session from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a session - %s", session_name));
                 return;
             }
 
             var gateway_state = session.gateway_state;
             if(gateway_state === null) {
                 // session not exist
-                return_forbidden(req, res, util.format("cannot retrieve a gateawy from a key - %s", session_key));
+                return_forbidden(req, res, util.format("cannot retrieve a gateawy - %s", session_name));
                 return;
             }
 

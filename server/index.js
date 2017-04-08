@@ -22,8 +22,17 @@ var filter = require('./ipfilter.js');
 var serverConfig = require('./server_config.js');
 var express = require('express');
 var minimist = require('minimist');
+var path = require('path');
 
 var app = express();
+
+function get_white_list_path() {
+    return util.format("%s/%s", __dirname, "whitelist");
+}
+
+function get_default_server_config_path() {
+    return util.format("%s/%s", __dirname, "server_config.json");
+}
 
 function parse_args(args) {
     var options = {
@@ -43,7 +52,7 @@ function parse_args(args) {
     } else if("p" in argv) {
         options.port = argv.p;
     }
-    options.config_path = argv.c || "./server_config.json";
+    options.config_path = argv.c || get_default_server_config_path();
     
     return options;
 }
@@ -60,7 +69,7 @@ function parse_args(args) {
 
     try {
         // set ip filter
-        whitelist = filter.get_white_list("./whitelist");
+        whitelist = filter.get_white_list(get_white_list_path());
         express_filter = filter.get_express_filter(whitelist);
         
         if(express_filter == null) {

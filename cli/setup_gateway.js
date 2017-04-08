@@ -26,6 +26,11 @@ var prompt = require('prompt');
 var username = require('username');
 var exec = require('child_process').exec;
 var execSync = require('child_process').execSync;
+var path = require('path');
+
+function get_default_client_config_path() {
+    return util.format("%s/%s", __dirname, "client_config.json");
+}
 
 function parse_args(args) {
     var options = {
@@ -54,7 +59,7 @@ function parse_args(args) {
     options.anonymous = argv.a || false;
     options.anonymous_gateway = argv.anonymous_gateway || "";
     options.gateway_config_path = argv.gateway_conf || "";
-    options.config_path = argv.c || "./client_config.json";
+    options.config_path = argv.c || get_default_client_config_path();
     return options;
 }
 

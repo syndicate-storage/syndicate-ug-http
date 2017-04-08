@@ -22,6 +22,11 @@ var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');
 var async = require('async');
+var path = require('path');
+
+function get_default_client_config_path() {
+    return util.format("%s/%s", __dirname, "client_config.json");
+}
 
 function parse_args(args) {
     var options = {
@@ -40,7 +45,7 @@ function parse_args(args) {
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
     options.user_cert_path = argv.k || "";
-    options.config_path = argv.c || "./client_config.json";
+    options.config_path = argv.c || get_default_client_config_path();
 
     if(options.user == "") {
         options.user = extract_user_from_cert(options.user_cert_path);

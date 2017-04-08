@@ -133,7 +133,7 @@ function get_field(field, options, body) {
 }
 
 module.exports = {
-    init: function(app, param) {
+    init: function(app, server_config) {
         // init REST
         utils.log_debug("INIT: initializing REST framework");
 
@@ -166,6 +166,7 @@ module.exports = {
         app.use(passport.session());
 
         utils.create_dir_recursively_sync(UPLOADS_PATH);
+        syndicateSetup.set_syndicate_conf_root(server_config.data_path);
     },
     get_router: function() {
         var router = new express.Router();

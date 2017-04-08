@@ -21,9 +21,15 @@ var async = require('async');
 var exec = require('child_process').exec;
 var url = require('url');
 
+var SYNDICATE_CONF_ROOT = "~/.syndicate-ug-http";
+
+function set_syndicate_conf_root(path) {
+    SYNDICATE_CONF_ROOT = path;
+}
+
 function make_syndicate_conf_path(ms_url, user) {
     var ms = url.parse(ms_url);
-    var path = util.format("~/.syndicate-ug-http/%s/%s", ms.host, user);
+    var path = util.format("%s/%s/%s", SYNDICATE_CONF_ROOT, ms.host, user);
     return utils.resolve_home(path);
 }
 
@@ -232,6 +238,9 @@ module.exports = {
                 callback(null, util.format("setup a gateway - %s", gateway));
             });
         }
+    },
+    set_syndicate_conf_root: function(path) {
+        set_syndicate_conf_root(path);
     },
     get_configuration_path: function(ms_url, user) {
         return make_syndicate_conf_path(ms_url, user);

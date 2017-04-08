@@ -50,7 +50,8 @@ function overwrite_config(conf1, conf2) {
 module.exports = {
     get_config: function(config_file, config_ext) {
         var default_config = {
-            "port": 8888
+            "port": 8888,
+            "data_path": "~"
         }
 
         var cfile = config_file || DEFAULT_CONFIG_FILENAME;

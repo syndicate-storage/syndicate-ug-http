@@ -16,7 +16,7 @@
 
 var util = require('util');
 var utils = require('./utils.js');
-var syndicate = require('syndicate-drive');
+var syndicate = require('syndicate-storage');
 var nodeCache = require('node-cache');
 
 function safe_close_fh(ug, fh) {

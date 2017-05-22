@@ -1,10 +1,10 @@
 {
-  "name": "syndicate-drive-ug-http",
+  "name": "syndicate-storage-ug-http",
   "version": "0.1.0",
-  "description": "Syndicate drive UG http",
+  "description": "Syndicate Storage UG http",
   "keywords": [
     "syndicate",
-    "syndicate-drive",
+    "syndicate-storage",
     "fs",
     "filesystem",
     "UG",
@@ -21,7 +21,7 @@
     "url": "https://github.com/syndicate-storage/syndicate-ug-http.git"
   },
   "dependencies": {
-    "syndicate-drive": "latest",
+    "syndicate-storage": "latest",
     "express": "latest",
     "express-session": "latest",
     "passport": "latest",
@@ -38,6 +38,6 @@
   },
   "devDependencies": {},
   "bin": {
-    "syndicate-http": "syndicate-ug-http.js"
+    "syndicate-http": "index.js"
   }
 }

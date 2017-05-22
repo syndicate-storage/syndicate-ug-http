@@ -1,10 +1,10 @@
 {
-  "name": "syndicate-drive-ug-http-cli",
+  "name": "syndicate-storage-ug-http-cli",
   "version": "0.1.0",
-  "description": "Syndicate drive UG http CLI",
+  "description": "Syndicate Storage UG http CLI",
   "keywords": [
     "syndicate",
-    "syndicate-drive",
+    "syndicate-storage",
     "fs",
     "filesystem",
     "UG",

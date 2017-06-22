@@ -18,6 +18,7 @@
 var util = require('util');
 var utils = require('./utils.js');
 var clientConfig = require('./client_config.js');
+var hadoopCredentials = require('./hadoop_credentials.js');
 var restler = require('restler');
 var minimist = require('minimist');
 var fs = require('fs');
@@ -43,6 +44,7 @@ function parse_args(args) {
         anonymous_gateway: "",
         gateway_config_path: "",
         config_path: "",
+        setup_hadoop_credential: false,
     };
 
     // skip first two args
@@ -51,8 +53,8 @@ function parse_args(args) {
     var argv = minimist(args.slice(2));
 
     // parse
-    options.session_name = argv.session_name || "",
-    options.session_key = argv.session_key || "",
+    options.session_name = argv.session_name || "";
+    options.session_key = argv.session_key || "";
     options.ms_url = argv.m || "";
     options.user = argv.u || "";
     options.volume = argv.v || "";
@@ -60,6 +62,7 @@ function parse_args(args) {
     options.anonymous_gateway = argv.anonymous_gateway || "";
     options.gateway_config_path = argv.gateway_conf || "";
     options.config_path = argv.c || get_default_client_config_path();
+    options.setup_hadoop_credential = argv.setup_hadoop_credential || false;
     return options;
 }
 
@@ -204,44 +207,6 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
     }
 }
 
-function setup_hadoop_credential(hadoop_user, session_name, session_key, callback) {
-    /*
-        hadoop credential create \
-                    fs.hsyndicate.session.session_name.key \
-                    -v session_key \
-                    -provider jceks://hdfs/user/iychoi/.syndicate/hsyndicate.jceks
-    */
-    /*
-        hadoop dfs -D hadoop.security.credential.provider.path=jceks://hdfs/user/iychoi/.syndicate/hsyndicate.jceks -ls
-    */
-
-    utils.log_info(util.format("setting up a hadoop credential for %s", session_name));
-    
-    var provider_path = util.format("jceks://hdfs/user/%s/.syndicate/hsyndicate.jceks", hadoop_user);
-    var name_pattern = util.format("fs.hsyndicate.session.%s.key", session_name);
-
-    var cmd = util.format("hadoop credential create %s -v %s -provider %s", name_pattern, session_key, provider_path);
-    utils.log_debug(cmd);
-    var child = exec(cmd, function(error, stdout, stderr) {
-        if (error) {
-            callback(error, null);
-            return;
-        }
-        callback(null, stdout);
-    });
-}
-
-function is_hadoop_available() {
-    var cmd = "hadoop version";
-    try {
-        var stdout = execSync(cmd);
-        return true;
-    } catch (e) {
-        // exitcode is not 0
-        return false;
-    }
-}
-
 (function main() {
     utils.log_info("Setup a gateway");
 
@@ -325,17 +290,19 @@ function is_hadoop_available() {
                     utils.log_info(util.format("Setup a gateway of a user (%s) and a volume (%s)", configuration.user, configuration.volume));
                     utils.log_info(util.format("Use a session name (%s) to access", configuration.session_name));
 
-                    if(is_hadoop_available()) {
-                        var hadoop_user = username.sync();
-                        setup_hadoop_credential(hadoop_user, configuration.session_name, configuration.session_key, function(err, data) {
-                            if(err) {
-                                utils.log_error(util.format("Could not setup a hadoop credential: %s", err));
-                                return;
-                            }
-                            utils.log_info(util.format("Successfully setup a hadoop credential: %s", configuration.session_name));
-                        });
-                    } else {
-                        utils.log_info("Hadoop is not accessible - ignoring setting up a hadoop credential");
+                    if(configuration.setup_hadoop_credential) {
+                        if(hadoopCredentials.is_hadoop_available()) {
+                            var hadoop_user = username.sync();
+                            hadoopCredentials.setup_hadoop_credential(hadoop_user, configuration.session_name, configuration.session_key, function(err, data) {
+                                if(err) {
+                                    utils.log_error(util.format("Could not setup a hadoop credential: %s", err));
+                                    return;
+                                }
+                                utils.log_info(util.format("Successfully setup a hadoop credential: %s", configuration.session_name));
+                            });
+                        } else {
+                            utils.log_info("Hadoop is not accessible - ignoring setting up a hadoop credential");
+                        }
                     }
 
                     cb(null, results);

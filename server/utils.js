@@ -20,14 +20,14 @@ var fs = require('fs');
 var mkdirp = require('mkdirp');
 var crypto = require('crypto');
 
-var deleteFolderRecursivelySync = function(path) {
+function delete_folder_sync(path) {
     if(fs.existsSync(path)) {
-        fs.readdirSync(path).forEach(function(file,index) {
+        fs.readdirSync(path).forEach(function(file, index) {
             var curPath = path + "/" + file;
-            if(fs.lstatSync(curPath).isDirectory()) { 
+            if(fs.lstatSync(curPath).isDirectory()) {
                 // recurse
-                deleteFolderRecursivelySync(curPath);
-            } else { 
+                delete_folder(curPath);
+            } else {
                 // delete file
                 fs.unlinkSync(curPath);
             }
@@ -35,6 +35,68 @@ var deleteFolderRecursivelySync = function(path) {
         fs.rmdirSync(path);
     }
 };
+
+function delete_folder(path, callback) {
+    fs.stat(path, function(err, stats) {
+        if(err) {
+            callback(err,stats);
+            return;
+        }
+
+        if(stats.isFile()) {
+            fs.unlink(path, function(err) {
+                if(err) {
+                    callback(err, null);
+                } else {
+                    callback(null, true);
+                }
+                return;
+            });
+        } else if(stats.isDirectory()) {
+            fs.readdir(path, function(err, files) {
+                if(err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var f_length = files.length;
+                var f_delete_index = 0;
+
+                var checkStatus = function() {
+                    if(f_length === f_delete_index) {
+                        fs.rmdir(path, function(err) {
+                            if(err) {
+                                callback(err, null);
+                            } else {
+                                callback(null, true);
+                            }
+                        });
+                        return true;
+                    }
+
+                    return false;
+                };
+
+                if(!checkStatus()) {
+                    for(var i=0;i<f_length;i++) {
+                        (function() {
+                            var filePath = path + '/' + files[i];
+                            delete_folder(filePath, function removeRecursiveCB(err, status) {
+                                if(!err){
+                                    f_delete_index++;
+                                    checkStatus();
+                                } else {
+                                    callback(err, null);
+                                    return;
+                                }
+                            });
+                        })();
+                    }
+                }
+            });
+        }
+    });
+}
 
 /**
  * Expose root class
@@ -57,9 +119,11 @@ module.exports = {
     log_info: function(str) {
         console.log(util.format("SYNDICATE_REST:INFO] %s", str));
     },
-    resolve_home: function(filepath) {
+    get_absolute_path: function(filepath) {
         if(filepath[0] === '~') {
             return path.join(process.env.HOME, filepath.slice(1));
+        } else if(filepath[0] === '.') {
+            return path.resolve(filepath);
         }
         return filepath;
     },
@@ -70,9 +134,25 @@ module.exports = {
         mkdirp(dir, mode, callback);
     },
     remove_dir_recursively_sync: function(dir) {
-        deleteFolderRecursivelySync(dir);
+        delete_folder_sync(dir);
+    },
+    remove_dir_recursively: function(dir, callback) {
+        delete_folder(dir, callback);
+    },
+    check_existance_sync: function(dir) {
+        return fs.existsSync(dir);
+    },
+    check_existance: function(dir, callback) {
+        fs.exists(dir, function(exist) {
+            callback(null, exist);
+        });
     },
     generate_random_string: function(bytes) {
         return crypto.randomBytes(bytes).toString('hex');
+    },
+    generate_checksum: function(bytes) {
+        var shasum = crypto.createHash('sha256');
+        shasum.update(bytes);
+        return shasum.digest('hex');
     }
 };

@@ -53,7 +53,7 @@ function parse_args(args) {
         options.port = argv.p;
     }
     options.config_path = argv.c || get_default_server_config_path();
-    
+
     return options;
 }
 
@@ -71,7 +71,7 @@ function parse_args(args) {
         // set ip filter
         whitelist = filter.get_white_list(get_white_list_path());
         express_filter = filter.get_express_filter(whitelist);
-        
+
         if(express_filter == null) {
             // do not filter
             utils.log_info("accept requests from all hosts");
@@ -83,11 +83,17 @@ function parse_args(args) {
         }
 
         // boot up
-        rest.init(app, server_config);
-        app.use('/', rest.get_router());
+        rest.init(app, server_config, function(err, data) {
+            if(err) {
+                utils.log_error(err);
+                return;
+            }
 
-        app.listen(server_config.port, function() {
-            utils.log_info(util.format("listening at %d", server_config.port));
+            app.use('/', rest.get_router());
+
+            app.listen(server_config.port, function() {
+                utils.log_info(util.format("listening at %d", server_config.port));
+            });
         });
     } catch (e) {
         utils.log_error(util.format("Exception occured: %s", e));

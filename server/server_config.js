@@ -50,8 +50,9 @@ function overwrite_config(conf1, conf2) {
 module.exports = {
     get_config: function(config_file, config_ext) {
         var default_config = {
-            "port": 8888,
-            "data_path": "~"
+            port: 8888,
+            db_path: util.format("%s/syndicate_rest.db", __dirname),
+            config_root: util.format("%s/mounts", __dirname)
         }
 
         var cfile = config_file || DEFAULT_CONFIG_FILENAME;
@@ -63,7 +64,7 @@ module.exports = {
             utils.log_error(util.format("Cannot read config file : %s", cfile));
             return null;
         }
-        
+
         var config = default_config;
         if(utils.is_json_string(config_str)) {
             var config2 = JSON.parse(config_str);
@@ -73,6 +74,10 @@ module.exports = {
         if(config_ext) {
             config = overwrite_config(config, config_ext);
         }
+
+        // make path absolute
+        config.db_path = utils.get_absolute_path(config.db_path);
+        config.config_root = utils.get_absolute_path(config.config_root);
         return config;
     },
     overwrite_config: function(conf1, conf2) {

@@ -30,11 +30,11 @@
     "express-ipfilter": "latest",
     "range_check": "latest",
     "multer": "latest",
-    "node-uuid": "latest",
     "mkdirp": "latest",
     "minimist": "latest",
     "async": "latest",
-    "crypto": "latest"
+    "crypto": "latest",
+    "sqlite3": "latest"
   },
   "devDependencies": {},
   "bin": {

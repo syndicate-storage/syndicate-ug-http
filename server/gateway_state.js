@@ -22,11 +22,11 @@ var nodeCache = require('node-cache');
 function safe_close_fh(ug, fh) {
     try {
         if(ug) {
-            utils.log_debug("SAFECLOSE: calling syndicate.close");
+            utils.log_debug("safe_close_fh: calling syndicate.close");
             syndicate.close(ug, fh);
         }
     } catch (ex) {
-        utils.log_error(util.format("SAFECLOSE: exception occured: %s", ex));
+        utils.log_error(util.format("safe_close_fh: exception occured: %s", ex));
     }
 }
 
@@ -34,30 +34,117 @@ function safe_close_gateway(ug) {
     try {
         if(ug) {
             // shutdown UG
-            utils.log_debug("SHUTDOWN: calling syndicate.shutdown");
+            utils.log_debug("safe_close_gateway: calling syndicate.shutdown");
             syndicate.shutdown(ug);
         }
     } catch (ex) {
-        utils.log_error(util.format("SHUTDOWN: exception occured: %s", ex));
+        utils.log_error(util.format("safe_close_gateway: exception occured: %s", ex));
     }
+}
+
+function close_all_fds(ug, fd_map, callback) {
+    var keys = fd_map.keys();
+    var i;
+    for(i=0;i<keys.length;i++) {
+        var key = keys[i];
+        var stat = fd_map.get(key);
+        if(stat) {
+            safe_close_fh(ug, stat.fh);
+        }
+
+        fd_map.del(key);
+    }
+    callback(null, "succeed");
+}
+
+function close_gateway(ug, callback) {
+    // close ug
+    safe_close_gateway(ug);
+    callback(null, "succeed");
+    return;
+}
+
+function get_next_fd(fd_table) {
+    fd_table.last_fd++;
+    var fd = fd_table.last_fd;
+    return fd;
+}
+
+function add_fd(fd_table, path, fh, flag, callback) {
+    var fd = get_next_fd(fd_table);
+    utils.log_debug(util.format("add_fd: adding a new file handle - %d", fd));
+
+    fd_table.fd_map.set(fd, {
+        'fd': fd,
+        'fh': fh,
+        'path': path,
+        'flag': flag
+    });
+
+    callback(null, fd);
+    return;
+}
+
+function remove_fd(fd_table, fd, callback) {
+    utils.log_debug(util.format("remove_fd: closing a file handle - %s", fd));
+    fd_table.fd_map.del(fd);
+
+    callback(null, fd);
+    return;
+}
+
+function get_fd(fd_table, fd, callback) {
+    utils.log_debug(util.format("get_fd: retriving a file handle - %s", fd));
+
+    var stat = fd_table.fd_map.get(fd);
+    if(stat) {
+        // extend cache's ttl
+        fd_table.fd_map.ttl(fd);
+
+        callback(null, stat);
+        return;
+    }
+
+    callback(util.format("get_fd: could not find a file handle - %s", fd), null);
+    return;
+}
+
+function reset_fd_ttl(fd_table, fd, callback){
+    utils.log_debug(util.format("reset_fd_ttl: resetting a file handle TTL - %s", fd));
+
+    var stat = fd_table.fd_map.get(fd);
+    if(stat) {
+        // reset cache's ttl
+        fd_table.fd_map.ttl(fd);
+
+        callback(null, "succeed");
+        return;
+    }
+
+    callback(util.format("reset_fd_ttl: could not find a file handle - %s", fd), null);
+    return;
 }
 
 /**
  * Expose root class
  */
 module.exports = {
-    // create a new gateway state
-    create: function(user, volume, gateway, config_path) {
+    init: function(user, volume, gateway, anonymous, debug_level, config_root_path, callback) {
+        var config_path = util.format("%s/syndicate.conf", config_root_path);
+
         try {
-            utils.log_debug("create: calling syndicate.create_opts");
-            var conf_file = util.format("%s/syndicate.conf", config_path);
-            var opts = syndicate.create_opts(user, volume, gateway, 0, conf_file);
+            var euser = user;
+            if(anonymous) {
+                euser = "ANONYMOUS";
+            }
+
+            var opts = syndicate.create_opts(euser, volume, gateway, debug_level, config_path);
 
             // init UG
-            utils.log_debug("create: calling syndicate.init");
+            utils.log_debug("init: calling syndicate.init");
             var ug = syndicate.init(opts);
 
-            // setup state
+            // file descriptors
             var fd_map = new nodeCache({
                 stdTTL: 3600,
                 checkperiod: 600,
@@ -69,138 +156,78 @@ module.exports = {
                 safe_close_fh(ug, fh);
             });
 
-            var gateway_state = {
+            var gateway_info = {
                 user: user,
+                anonymous: anonymous,
                 volume: volume,
                 gateway: gateway,
-                config_path: conf_file,
-                opts: opts,
-                ug: ug,
-                fd_map: fd_map,
-                last_fd: 0,
-                io_statistics: {},
+                config_path: config_path,
+                debug_level: debug_level
             };
 
-            return gateway_state;
+            var fd_table = {
+                fd_map: fd_map,
+                last_fd: 0
+            };
+
+            var gateway_state = {
+                ug: ug,
+                info: gateway_info,
+                fd_table: fd_table,
+                close: function(callback) {
+                    // close all files opened
+                    close_all_fds(ug, fd_map, function(err, data) {
+                        if(err) {
+                            callback(err, null);
+                            return;
+                        }
+
+                        close_gateway(ug, callback);
+                        return;
+                    });
+                },
+                open_fd: function(path, fh, flag, callback) {
+                    add_fd(fd_table, path, fh, flag, callback);
+                },
+                close_fd: function(fd, callback) {
+                    remove_fd(fd_table, fd, callback);
+                },
+                stat_fd: function(fd, callback) {
+                    get_fd(fd_table, fd, callback);
+                },
+                extend_fd_ttl: function(fd, callback) {
+                    reset_fd_ttl(fd_table, fd, callback);
+                }
+            };
+            callback(null, gateway_state);
+            return;
         } catch (ex) {
-            utils.log_error(util.format("create: exception occured: %s", ex));
-            return null;
+            callback(util.format("init: exception occured: %s", ex), null);
+            return;
         }
     },
-    // destroy a gateway state
-    destroy: function(gateway_state) {
-        // destroy
+    close: function(gateway_state, callback) {
         // close all files opened
-        var keys = gateway_state.fd_map.keys();
-        var i;
-        for(i=0;i<keys.length;i++) {
-            var key = keys[i];
-            utils.log_debug(util.format("destroy: closing a missing file handle - %s", key));
-            var stat = gateway_state.fd_map.get(key);
-            if(stat) {
-                safe_close_fh(gateway_state.ug, stat.fh);
-                utils.log_debug(util.format("destroy: file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
+        close_all_fds(gateway_state.ug, gateway_state.fd_table.fd_map, function(err, data) {
+            if(err) {
+                callback(err, null);
+                return;
             }
-            
-            gateway_state.fd_map.del(key);
-        }
-        
-        // close ug
-        safe_close_gateway(gateway_state.ug);
-    },
-    /*
-    statistics_keys: {
-        RESPONSE: "response",
-        RESPONSE_DATA: "response_data",
-        RESPONSE_ERROR: "response_error",
-        REQUEST: "request",
-        REQUEST_GET: "request_get",
-        REQUEST_POST: "request_post",
-        REQUEST_DELETE: "request_delete",
-        FILE_OPENED: "file_opened",
-        FILE_READ: "file_read",
-        FILE_WRITE: "file_write",
-    },
-    // statistics
-    get_statistics: function(gateway_state, key) {
-        var val = null;
-        if(key in gateway_state.io_statistics) {
-            val = gateway_state.io_statistics[key];
-        } else {
-            val = 0;
-        }
-        return val;
-    },
-    inc_statistics: function(gateway_state, key) {
-        var val = null;
-        if(key in gateway_state.io_statistics) {
-            val = gateway_state.io_statistics[key];
-        } else {
-            val = 0;
-        }
 
-        gateway_state.io_statistics[key] = val+1;
-        utils.log_debug("inc_statistics " + key + " - " + gateway_state.io_statistics[key]);
-    },
-    dec_statistics: function(gateway_state, key) {
-        var val = null;
-        if(key in gateway_state.io_statistics) {
-            val = gateway_state.io_statistics[key];
-        } else {
-            val = 0;
-        }
-
-        if(val-1 >= 0) {
-            gateway_state.io_statistics[key] = val - 1;
-        }
-
-        utils.log_debug("stat_dec " + key + " - " + gateway_state.io_statistics[key]);
-    },
-    */
-    create_file_handle: function(gateway_state, path, fh, flag) {
-        gateway_state.last_fd++;
-        var fd = gateway_state.last_fd;
-        utils.log_debug(util.format("create_file_handle: generate a new file handle - %d", fd));
-
-        gateway_state.fd_map.set(fd, {
-            'fd': fd,
-            'fh': fh,
-            'path': path,
-            'flag': flag
+            close_gateway(gateway_state.ug, callback);
+            return;
         });
-        
-        return fd;
     },
-    destroy_file_handle: function(gateway_state, fd) {
-        utils.log_debug(util.format("destroy_file_handle: closing a file handle - %s", fd));
-
-        var stat = gateway_state.fd_map.get(fd);
-        if(stat) {
-            utils.log_debug(util.format("destroy_file_handle: file handle closed - path(%s), flag(%s)", stat.path, stat.flag));
-        }
-        
-        gateway_state.fd_map.del(fd);
+    open_fd: function(gateway_state, path, fh, flag, callback) {
+        add_fd(gateway_state.fd_table, path, fh, flag, callback);
     },
-    stat_file_handle: function(gateway_state, fd) {
-        var stat = gateway_state.fd_map.get(fd);
-        
-        if(stat !== undefined) {
-            // extend cache's ttl
-            gateway_state.fd_map.ttl(fd);
-            return stat;
-        } else {
-            return null;
-        }
+    close_fd: function(gateway_state, fd, callback) {
+        remove_fd(gateway_state.fd_table, fd, callback);
     },
-    extend_file_handle_ttl: function(gateway_state, fd) {
-        var stat = gateway_state.fd_map.get(fd);
-
-        if(stat !== undefined) {
-            // extend cache's ttl
-            gateway_state.fd_map.ttl(fd);
-            return true;
-        }
-
-        return false;
+    stat_fd: function(gateway_state, fd, callback) {
+        get_fd(gateway_state.fd_table, fd, callback);
+    },
+    extend_fd_ttl: function(gateway_state, fd, callback) {
+        reset_fd_ttl(gateway_state.fd_table, fd, callback);
     }
 };

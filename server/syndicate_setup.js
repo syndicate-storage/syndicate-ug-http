@@ -19,18 +19,73 @@ var utils = require('./utils.js');
 var fs = require('fs');
 var async = require('async');
 var exec = require('child_process').exec;
-var url = require('url');
 
-var SYNDICATE_CONF_ROOT = "~/.syndicate-ug-http";
+var SYNDICATE_CONF_ROOT = __dirname + "/mounts";
 
 function set_syndicate_conf_root(path) {
     SYNDICATE_CONF_ROOT = path;
 }
 
-function make_syndicate_conf_path(ms_url, user) {
-    var ms = url.parse(ms_url);
-    var path = util.format("%s/%s/%s", SYNDICATE_CONF_ROOT, ms.host, user);
-    return utils.resolve_home(path);
+function make_syndicate_conf_path(mount_id) {
+    var path = util.format("%s/%s", SYNDICATE_CONF_ROOT, mount_id);
+    return utils.get_absolute_path(path);
+}
+
+function syndicate_check_setup(conf_dir, callback) {
+    utils.log_info(util.format("checking up a syndicate conf %s", conf_dir));
+    // check
+    async.waterfall([
+        function(cb) {
+            utils.check_existance(conf_dir, function(err, exist) {
+                if(err) {
+                    cb(err, null);
+                    return;
+                }
+
+                cb(null, exist);
+                return;
+            });
+        },
+        function(exist, cb) {
+            if(!exist) {
+                cb(null, false);
+                return;
+            }
+
+            var conf_file = util.format("%s/syndicate.conf", conf_dir);
+            utils.check_existance(conf_file, function(err, exist_file) {
+                if(err) {
+                    cb(err, null);
+                    return;
+                }
+
+                if(!exist_file) {
+                    // empty dir
+                    utils.remove_dir_recursively(conf_dir, function(err_remove, result_remove) {
+                        if(err_remove) {
+                            cb(err_remove, null);
+                            return;
+                        }
+
+                        cb(null, false);
+                        return;
+                    });
+                    return;
+                } else {
+                    cb(null, true);
+                    return;
+                }
+            });
+        }
+    ], function(err, exist) {
+        if(err) {
+            callback(err, null);
+            return;
+        }
+
+        callback(null, true);
+        return;
+    });
 }
 
 function syndicate_setup(ms_url, user, conf_dir, cert_path, callback) {
@@ -58,6 +113,18 @@ function syndicate_setup(ms_url, user, conf_dir, cert_path, callback) {
         }
         callback(null, stdout);
     });
+}
+
+function syndicate_remove_setup(conf_dir, callback) {
+    utils.log_info(util.format("removing a syndicate conf %s", conf_dir));
+    // check
+    exist = utils.check_existance_sync(conf_dir);
+    if (exist) {
+        var conf_file = util.format("%s/syndicate.conf", conf_dir);
+        exist = utils.check_existance_sync(conf_file);
+    }
+
+    callback(null, true);
 }
 
 function syndicate_import_gateway(conf_dir, cert_path, callback) {
@@ -148,8 +215,19 @@ function syndicate_reload_gateway(gateway, conf_dir, callback) {
  * Expose root class
  */
 module.exports = {
-    setup_user: function(ms_url, user, cert_path, callback) {
-        var user_syndicate_dir = make_syndicate_conf_path(ms_url, user);
+    check_user: function(mount_id, callback) {
+        var user_syndicate_dir = make_syndicate_conf_path(mount_id);
+        syndicate_check_setup(user_syndicate_dir, function(err, data) {
+            if(err) {
+                callback(err, null);
+                return;
+            }
+
+            callback(null, data);
+        });
+    },
+    setup_user: function(mount_id, ms_url, user, cert_path, callback) {
+        var user_syndicate_dir = make_syndicate_conf_path(mount_id);
         async.waterfall([
             function(cb) {
                 syndicate_setup(ms_url, user, user_syndicate_dir, cert_path, function(err, data) {
@@ -174,12 +252,23 @@ module.exports = {
                 callback(err, null);
                 return;
             }
-            
-            callback(null, util.format("setup an user - %s", user));
+
+            callback(null, util.format("setup an user - MountID(%s) / U(%s)", mount_id, user));
         });
     },
-    setup_gateway: function(ms_url, user, volume, gateway, anonymous, cert_path, callback) {
-        var user_syndicate_dir = make_syndicate_conf_path(ms_url, user);
+    remove_user: function(mount_id, callback) {
+        var user_syndicate_dir = make_syndicate_conf_path(mount_id);
+        syndicate_remove_setup(user_syndicate_dir, function(err, data) {
+            if(err) {
+                callback(err, null);
+                return;
+            }
+
+            callback(null, data);
+        });
+    },
+    setup_gateway: function(mount_id, volume, gateway, anonymous, cert_path, callback) {
+        var user_syndicate_dir = make_syndicate_conf_path(mount_id);
 
         if(anonymous) {
             async.waterfall([
@@ -206,8 +295,8 @@ module.exports = {
                     callback(err, null);
                     return;
                 }
-                
-                callback(null, util.format("setup a gateway - %s", gateway));
+
+                callback(null, util.format("setup a gateway - MountID(%s) / G(%s) / A(%s)", mount_id, gateway, anonymous));
             });
         } else {
             async.waterfall([
@@ -234,15 +323,11 @@ module.exports = {
                     callback(err, null);
                     return;
                 }
-                
-                callback(null, util.format("setup a gateway - %s", gateway));
+
+                callback(null, util.format("setup a gateway - MountID(%s) / G(%s) / A(%s)", mount_id, gateway, anonymous));
             });
         }
     },
-    set_syndicate_conf_root: function(path) {
-        set_syndicate_conf_root(path);
-    },
-    get_configuration_path: function(ms_url, user) {
-        return make_syndicate_conf_path(ms_url, user);
-    },
+    set_syndicate_conf_root: set_syndicate_conf_root,
+    get_configuration_path: make_syndicate_conf_path
 };

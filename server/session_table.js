@@ -339,6 +339,11 @@ function authenticate_session(db, session_name, session_key, callback) {
             return;
         }
 
+        if(record.anonymous) {
+            callback(null, record);
+            return;
+        }
+
         if(make_session_key_hash(record.name, session_key) == record.key) {
             callback(null, record);
             return;

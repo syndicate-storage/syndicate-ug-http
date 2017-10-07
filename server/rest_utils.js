@@ -63,6 +63,7 @@ function return_error_raw(req, res, error_code, error) {
         utils.log_info(util.format("Respond with error (code %d) > %d bytes", error_code, error.length));
     } else {
         utils.log_info(util.format("Respond with error (code %d)", error_code));
+        utils.log_debug(util.format("> %s", JSON.stringify(error)));
     }
 }
 

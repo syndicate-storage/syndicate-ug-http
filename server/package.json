@@ -30,6 +30,7 @@
     "express-ipfilter": "latest",
     "range_check": "latest",
     "multer": "latest",
+    "body-parser": "latest",
     "mkdirp": "latest",
     "minimist": "latest",
     "async": "latest",

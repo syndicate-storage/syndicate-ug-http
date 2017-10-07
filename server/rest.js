@@ -22,6 +22,7 @@ var querystring = require('querystring');
 var fs = require('fs');
 var path = require('path');
 var multer  = require('multer');
+var bodyParser = require('body-parser');
 var async = require('async');
 var syndicate = require('syndicate-storage');
 var passport = require('passport');
@@ -113,6 +114,10 @@ module.exports = {
             secret: utils.generate_random_string(64),
             resave: false,
             saveUninitialized: true,
+        }));
+
+        app.use(bodyParser.urlencoded({
+            extended: true
         }));
 
         utils.create_dir_recursively_sync(path.dirname(server_config.db_path));

@@ -92,12 +92,17 @@ function return_error(req, res, ex) {
 
 function get_post_param(param, options, body) {
     var param_val = null;
-    if(param in options) {
-        param_val = options[param];
+
+    if(options) {
+        if(param in options) {
+            param_val = options[param];
+        }
     }
 
-    if(param in body) {
-        param_val = body[param];
+    if(body) {
+        if(param in body) {
+            param_val = body[param];
+        }
     }
 
     if(param_val !== null && param_val.length !== 0) {

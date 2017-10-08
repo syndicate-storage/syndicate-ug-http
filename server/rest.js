@@ -207,11 +207,10 @@ module.exports = {
         /*
          * From this point, authentication is required.
          */
-        router.get('/fs', authenticate, restFSAPI.get_vol_handler);
-        router.get('/fs/*', authenticate, restFSAPI.get_handler);
-        router.post('/fs/*', authenticate, restFSAPI.post_handler);
-        router.put('/fs/*', authenticate, restFSAPI.post_handler);
-        router.delete('/fs/*', authenticate, restFSAPI.delete_handler);
+        router.get('/fs*', authenticate, restFSAPI.get_handler);
+        router.post('/fs*', authenticate, restFSAPI.post_handler);
+        router.put('/fs*', authenticate, restFSAPI.post_handler);
+        router.delete('/fs*', authenticate, restFSAPI.delete_handler);
         return router;
     }
 };

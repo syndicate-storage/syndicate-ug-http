@@ -588,55 +588,22 @@ function fs_close(ug, gateway_state, stat, callback) {
  * Expose root class
  */
 module.exports = {
-    get_vol_handler: function(req, res) {
-        var options = req.query;
-        var path = req.target;
-        var session_table = req.session_table;
-        var session_name = req.user.name;
-
-        session_table.get_state(session_name, function(err, gateway_state) {
-            if(err) {
-                restUtils.return_error(req, res, err);
-                return;
-            }
-
-            if(gateway_state === null) {
-                // session not exist
-                restUtils.return_error(req, res, util.format("cannot retrieve a gateway state - %s", session_name));
-                return;
-            }
-
-            var ug = gateway_state.ug;
-            var return_rest_data = function(err, data) {
-                if(err) {
-                    restUtils.return_error(req, res, err);
-                    return;
-                }
-
-                restUtils.return_data(req, res, data);
-                return;
-            };
-
-            if(options.statvfs !== undefined) {
-                // statvfs: ?statvfs
-                fs_statvfs(ug, return_rest_data);
-            } else {
-                res.status(403).send();
-            }
-        });
-    },
     get_handler: function(req, res) {
         var options = req.query;
         var path = req.target;
         var session_table = req.session_table;
         var session_name = req.user.name;
 
-        if(!path.startsWith("/fs/")) {
-            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs/ prefix - %s", path));
+        if(!path.startsWith("/fs")) {
+            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs prefix - %s", path));
             return;
         }
         // cut off /fs part
         path = path.slice(3);
+        // for /fs/?op=val request, /fs?op=val comes
+        if(path[0] !== "/") {
+            path = "/";
+        }
 
         session_table.get_state(session_name, function(err, gateway_state) {
             if(err) {
@@ -742,12 +709,16 @@ module.exports = {
         var session_table = req.session_table;
         var session_name = req.user.name;
 
-        if(!path.startsWith("/fs/")) {
-            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs/ prefix - %s", path));
+        if(!path.startsWith("/fs")) {
+            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs prefix - %s", path));
             return;
         }
         // cut off /fs part
         path = path.slice(3);
+        // for /fs/?op=val request, /fs?op=val comes
+        if(path[0] !== "/") {
+            path = "/";
+        }
 
         session_table.get_state(session_name, function(err, gateway_state) {
             if(err) {
@@ -843,12 +814,16 @@ module.exports = {
         var session_table = req.session_table;
         var session_name = req.user.name;
 
-        if(!path.startsWith("/fs/")) {
-            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs/ prefix - %s", path));
+        if(!path.startsWith("/fs")) {
+            restUtils.return_badrequest(req, res, util.format("path does not have correct /fs prefix - %s", path));
             return;
         }
         // cut off /fs part
         path = path.slice(3);
+        // for /fs/?op=val request, /fs?op=val comes
+        if(path[0] !== "/") {
+            path = "/";
+        }
 
         session_table.get_state(session_name, function(err, gateway_state) {
             if(err) {

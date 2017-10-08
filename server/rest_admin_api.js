@@ -96,7 +96,7 @@ function make_mount_consistent(mount_table, session_table, mount_id, callback) {
     });
 }
 
-function user_check(mount_table, session_table, mount_id, callback) {
+function admin_user_check(mount_table, session_table, mount_id, callback) {
     try {
         make_mount_consistent(mount_table, session_table, mount_id, function(err, result) {
             if(err) {
@@ -116,7 +116,7 @@ function user_check(mount_table, session_table, mount_id, callback) {
     }
 }
 
-function user_setup(mount_table, session_table, mount_id, ms_url, user, cert_path, callback) {
+function admin_user_setup(mount_table, session_table, mount_id, ms_url, user, user_cert, callback) {
     utils.log_debug(util.format("setting up a user - U(%s) / MountID(%s)", user, ms_url, mount_id));
     async.waterfall([
         function(cb) {
@@ -131,7 +131,6 @@ function user_setup(mount_table, session_table, mount_id, ms_url, user, cert_pat
                     cb(util.format("user is already setup - U(%s) / MountID(%s)", user, mount_id), null);
                     return;
                 }
-
                 cb(null, false);
             });
         },
@@ -146,16 +145,25 @@ function user_setup(mount_table, session_table, mount_id, ms_url, user, cert_pat
             });
         },
         function(result, cb) {
+            utils.write_temp_file(user_cert, function(err, cert_path) {
+                if(err) {
+                    cb(err, null);
+                    return;
+                }
+                cb(null, cert_path);
+            });
+        },
+        function(cert_path, cb) {
             // register user (import)
             syndicateSetup.setup_user(mount_id, ms_url, user, cert_path, function(err, data) {
                 if(err) {
                     cb(err, null);
                     return;
                 }
-                cb(null, data);
+                cb(null, cert_path);
             });
         },
-        function(result, cb) {
+        function(cert_path, cb) {
             // remove cert after installing it
             try {
                 fs.unlink(cert_path, function(err, data) {
@@ -166,7 +174,7 @@ function user_setup(mount_table, session_table, mount_id, ms_url, user, cert_pat
                     cb(null, data);
                 });
             } catch (ex) {
-                cb(ex, data);
+                cb(ex, null);
             }
         }
     ], function(err, data) {
@@ -180,7 +188,7 @@ function user_setup(mount_table, session_table, mount_id, ms_url, user, cert_pat
     });
 }
 
-function user_delete(mount_table, session_table, mount_id, callback) {
+function admin_user_delete(mount_table, session_table, mount_id, callback) {
     utils.log_debug(util.format("deleting a user - U(%s) / MountID(%s)", user, mount_id));
     async.waterfall([
         function(cb) {
@@ -236,7 +244,7 @@ function user_delete(mount_table, session_table, mount_id, callback) {
     });
 }
 
-function gateway_check(session_table, session_name, callback) {
+function admin_gateway_check(session_table, session_name, callback) {
     try {
         session_table.check(session_name, function(err, result) {
             if(err) {
@@ -256,7 +264,7 @@ function gateway_check(session_table, session_name, callback) {
     }
 }
 
-function gateway_setup(mount_table, session_table, mount_id, session_name, session_key, volume, gateway, anonymous, cert_path, callback) {
+function admin_gateway_setup(mount_table, session_table, mount_id, session_name, session_key, volume, gateway, anonymous, gateway_cert, callback) {
     utils.log_debug(util.format("setting up a gateway - V(%s) / G(%s) / MountID(%s) / A(%s) / S(%s)", volume, gateway, mount_id, anonymous, session_name));
     async.waterfall([
         function(cb) {
@@ -300,29 +308,34 @@ function gateway_setup(mount_table, session_table, mount_id, session_name, sessi
             });
         },
         function(result, cb) {
+            utils.write_temp_file(gateway_cert, function(err, cert_path) {
+                if(err) {
+                    cb(err, null);
+                    return;
+                }
+                cb(null, cert_path);
+            });
+        },
+        function(cert_path, cb) {
             // register gateway
             syndicateSetup.setup_gateway(mount_id, volume, gateway, anonymous, cert_path, function(err, data) {
                 if(err) {
                     cb(err, null);
                     return;
                 }
-                cb(null, data);
+                cb(null, cert_path);
             });
         },
-        function(result, cb) {
+        function(cert_path, cb) {
             // remove cert after installing it
             try {
-                if(cert_path) {
-                    fs.unlink(cert_path, function(err, data) {
-                        if(err) {
-                            cb(err, null);
-                            return;
-                        }
-                        cb(null, data);
-                    });
-                } else {
-                    cb(null, true);
-                }
+                fs.unlink(cert_path, function(err, data) {
+                    if(err) {
+                        cb(err, null);
+                        return;
+                    }
+                    cb(null, data);
+                });
             } catch(ex) {
                 cb(ex, null);
             }
@@ -352,7 +365,7 @@ function gateway_setup(mount_table, session_table, mount_id, session_name, sessi
     });
 }
 
-function gateway_delete(session_table, session_name, session_key, callback) {
+function admin_gateway_delete(session_table, session_name, session_key, callback) {
     utils.log_debug(util.format("deleting a gateway - S(%s)", session_name));
     async.waterfall([
         function(cb) {
@@ -436,7 +449,7 @@ module.exports = {
             mount_id = mountTable.make_mount_id(ms_url, user);
         }
 
-        user_check(mount_table, session_table, mount_id, function(err, data) {
+        admin_user_check(mount_table, session_table, mount_id, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;
@@ -463,21 +476,19 @@ module.exports = {
             return;
         }
 
-        var cert_file = req.file;
-        if(cert_file === null || cert_file === undefined) {
-            restUtils.return_badrequest(req, res, "invalid request parameters - cert is not given");
-            return;
-        }
-
         // optional
         var mount_id = restUtils.get_post_param("mount_id", options, req.body);
         if(mount_id === null) {
             mount_id = mountTable.make_mount_id(ms_url, user);
         }
 
-        var cert_path = cert_file.path;
+        var user_cert = restUtils.get_post_param("cert", options, req.body);
+        if(user_cert === null) {
+            restUtils.return_badrequest(req, res, "invalid request parameters - cert is not given");
+            return;
+        }
 
-        user_setup(mount_table, session_table, mount_id, ms_url, user, cert_path, function(err, data) {
+        admin_user_setup(mount_table, session_table, mount_id, ms_url, user, user_cert, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;
@@ -512,7 +523,7 @@ module.exports = {
             mount_id = mountTable.make_mount_id(ms_url, user);
         }
 
-        user_delete(mount_table, session_table, mount_id, function(err, data) {
+        admin_user_delete(mount_table, session_table, mount_id, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;
@@ -532,7 +543,7 @@ module.exports = {
             return;
         }
 
-        gateway_check(session_table, session_name, function(err, data) {
+        admin_gateway_check(session_table, session_name, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;
@@ -595,18 +606,16 @@ module.exports = {
             anonymous = true;
         }
 
-        var cert_path = null;
+        var gateway_cert = null;
         if(!anonymous) {
-            var cert_file = req.file;
-            if(cert_file === null || cert_file === undefined) {
+            var gateway_cert = restUtils.get_post_param("cert", options, req.body);
+            if(gateway_cert === null) {
                 restUtils.return_badrequest(req, res, "invalid request parameters - cert is not given");
                 return;
             }
-
-            cert_path = cert_file.path;
         }
 
-        gateway_setup(mount_table, session_table, mount_id, session_name, session_key, volume, gateway, anonymous, cert_path, function(err, data) {
+        admin_gateway_setup(mount_table, session_table, mount_id, session_name, session_key, volume, gateway, anonymous, gateway_cert, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;
@@ -632,7 +641,7 @@ module.exports = {
             return;
         }
 
-        gateway_delete(session_table, session_name, session_key, function(err, data) {
+        admin_gateway_delete(session_table, session_name, session_key, function(err, data) {
             if(err) {
                 restUtils.return_error(req, res, err);
                 return;

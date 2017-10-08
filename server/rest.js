@@ -21,7 +21,6 @@ var expressSession = require('express-session');
 var querystring = require('querystring');
 var fs = require('fs');
 var path = require('path');
-var multer  = require('multer');
 var bodyParser = require('body-parser');
 var async = require('async');
 var syndicate = require('syndicate-storage');
@@ -36,19 +35,6 @@ var restUtils = require('./rest_utils.js');
 var restAdminAPI = require('./rest_admin_api.js');
 var restSessionAPI = require('./rest_session_api.js');
 var restFSAPI = require('./rest_fs_api.js');
-
-
-var UPLOADS_PATH = '/tmp/syndicate-ug-http/uploads';
-
-var storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, UPLOADS_PATH);
-    },
-    filename: function (req, file, cb) {
-        cb(null, util.format("%s.bin", Date.now()));
-    }
-});
-var upload = multer({ storage: storage });
 
 var authenticate = passport.authenticate('basic');
 
@@ -121,7 +107,6 @@ module.exports = {
         }));
 
         utils.create_dir_recursively_sync(path.dirname(server_config.db_path));
-        utils.create_dir_recursively_sync(UPLOADS_PATH);
         syndicateSetup.set_syndicate_conf_root(server_config.config_root);
 
         async.series({
@@ -206,12 +191,12 @@ module.exports = {
 
         // admin apis
         router.get('/user/check', restAdminAPI.user_check);
-        router.post('/user/setup', upload.single('cert'), restAdminAPI.user_setup);
+        router.post('/user/setup', restAdminAPI.user_setup);
         router.post('/user/delete', restAdminAPI.user_delete);
         router.put('/user/delete', restAdminAPI.user_delete);
         router.delete('/user/delete', restAdminAPI.user_delete);
         router.get('/gateway/check', restAdminAPI.gateway_check);
-        router.post('/gateway/setup', upload.single('cert'), restAdminAPI.gateway_setup);
+        router.post('/gateway/setup', restAdminAPI.gateway_setup);
         router.post('/gateway/delete', restAdminAPI.gateway_delete);
         router.put('/gateway/delete', restAdminAPI.gateway_delete);
         router.delete('/gateway/delete', restAdminAPI.gateway_delete);
@@ -222,10 +207,11 @@ module.exports = {
         /*
          * From this point, authentication is required.
          */
-        router.get('*', authenticate, restFSAPI.get_handler);
-        router.post('*', authenticate, restFSAPI.post_handler);
-        router.put('*', authenticate, restFSAPI.post_handler);
-        router.delete('*', authenticate, restFSAPI.delete_handler);
+        router.get('/fs', authenticate, restFSAPI.get_vol_handler);
+        router.get('/fs/*', authenticate, restFSAPI.get_handler);
+        router.post('/fs/*', authenticate, restFSAPI.post_handler);
+        router.put('/fs/*', authenticate, restFSAPI.post_handler);
+        router.delete('/fs/*', authenticate, restFSAPI.delete_handler);
         return router;
     }
 };

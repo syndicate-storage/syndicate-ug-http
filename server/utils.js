@@ -19,6 +19,10 @@ var path = require('path');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
 var crypto = require('crypto');
+var temp = require('temp');
+
+// Automatically track and cleanup files at exit
+temp.track();
 
 function delete_folder_sync(path) {
     if(fs.existsSync(path)) {
@@ -98,6 +102,33 @@ function delete_folder(path, callback) {
     });
 }
 
+function write_temp_file(bytes, callback) {
+    temp.open({prefix: "syn_ug_http_", suffix: '.tmp'}, function(err, info) {
+        if(err) {
+            callback(err, null);
+            return;
+        }
+
+        fs.write(info.fd, bytes, function(err, data) {
+            if(err) {
+                callback(err, null);
+                return;
+            }
+
+            fs.close(info.fd, function(err) {
+                if(err) {
+                    callback(err, null);
+                    return;
+                }
+
+                callback(null, info.path);
+                return;
+            });
+        });
+    });
+}
+
+
 /**
  * Expose root class
  */
@@ -154,5 +185,8 @@ module.exports = {
         var shasum = crypto.createHash('sha256');
         shasum.update(bytes);
         return shasum.digest('hex');
+    },
+    write_temp_file: function(bytes, callback) {
+        write_temp_file(bytes, callback);
     }
 };

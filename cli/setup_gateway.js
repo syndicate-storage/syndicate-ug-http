@@ -101,7 +101,7 @@ function process_prompt(conf, callback) {
         if(result.session_name) {
             conf.session_name = result.session_name;
         }
-        
+
         if(result.session_key) {
             conf.session_key = result.session_key;
         }
@@ -111,14 +111,14 @@ function process_prompt(conf, callback) {
 }
 
 function check_config(conf) {
-    if(conf.session_name && conf.session_key && 
+    if(conf.session_name && conf.session_key &&
         conf.ms_url && conf.user && conf.volume && conf.service_hosts && conf.service_hosts.length > 0 && conf.service_port > 0) {
         if(conf.anonymous) {
             if(conf.gateways && conf.gateways.length == 1) {
                 return true;
             }
         } else {
-            if(conf.gateways && conf.gateways.length > 0 && 
+            if(conf.gateways && conf.gateways.length > 0 &&
                 conf.gateway_cert_paths && conf.gateway_cert_paths.length > 0 &&
                 conf.gateways.length == conf.gateway_cert_paths.length &&
                 conf.service_hosts.length <= conf.gateways.length) {
@@ -144,7 +144,7 @@ function assign_gateways(anonymous, hosts, gateways, certs) {
             gateway = gateways[i];
             cert = certs[i];
         }
-        
+
         assignment.push({
             "host": host,
             "gateway": gateway,
@@ -157,21 +157,23 @@ function assign_gateways(anonymous, hosts, gateways, certs) {
 }
 
 function setup_gateway(node_host, node_port, session_name, session_key, ms_url, user, volume, gateway, anonymous, cert_path, callback) {
-    // test 
+    // test
     var url = util.format("http://%s:%d/gateway/setup", node_host, node_port);
     var complete_callback = function(result, response) {
         if(result instanceof Error) {
             utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));
             callback(result, null);
+            return;
         } else {
             utils.log_info(util.format("[%s:%d] %s", node_host, node_port, JSON.stringify(result)));
             callback(null, node_host);
+            return;
         }
     };
 
     if(anonymous) {
         restler.post(url, {
-            multipart: true,
+            multipart: false,
             data: {
                 'session_name': session_name,
                 'session_key': session_key,
@@ -189,20 +191,28 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
                 callback(util.format("Cannot open cert: %s", cert_path), null);
                 return;
             }
-            
-            restler.post(url, {
-                multipart: true,
-                data: {
-                    'session_name': session_name,
-                    'session_key': session_key,
-                    'ms_url': ms_url,
-                    'user': user,
-                    'volume': volume,
-                    'gateway': gateway,
-                    'anonymous': 'false',
-                    'cert': restler.file(cert_path, null, stat.size, null, null)
+
+            fs.readFile(cert_path, function(err, data) {
+                if(err) {
+                    utils.log_error(util.format("error occurred - %s", err));
+                    callback(util.format("cannot read cert: %s", cert_path), null);
+                    return;
                 }
-            }).on('complete', complete_callback);
+
+                restler.post(url, {
+                    multipart: false,
+                    data: {
+                        'session_name': session_name,
+                        'session_key': session_key,
+                        'ms_url': ms_url,
+                        'user': user,
+                        'volume': volume,
+                        'gateway': gateway,
+                        'anonymous': 'false',
+                        'cert': data
+                    }
+                }).on('complete', complete_callback);
+            });
         });
     }
 }
@@ -275,11 +285,11 @@ function setup_gateway(node_host, node_port, session_name, session_key, ms_url, 
 
                 gateway_assignment.forEach(function(assignment) {
                     calls[assignment.host] = function(callback) {
-                        setup_gateway(assignment.host, configuration.service_port, configuration.session_name, configuration.session_key, 
+                        setup_gateway(assignment.host, configuration.service_port, configuration.session_name, configuration.session_key,
                             configuration.ms_url, configuration.user, configuration.volume, assignment.gateway, configuration.anonymous, assignment.cert_path, callback);
                     };
                 });
-                
+
                 //async.series(calls, function(err, results) {
                 async.parallel(calls, function(err, results) {
                     if(err) {

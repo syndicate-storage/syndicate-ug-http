@@ -29,12 +29,12 @@
     "node-cache": "latest",
     "express-ipfilter": "latest",
     "range_check": "latest",
-    "multer": "latest",
     "body-parser": "latest",
     "mkdirp": "latest",
     "minimist": "latest",
     "async": "latest",
     "crypto": "latest",
+    "temp": "latest",
     "sqlite3": "latest"
   },
   "devDependencies": {},

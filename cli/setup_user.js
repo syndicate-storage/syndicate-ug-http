@@ -79,7 +79,7 @@ function check_config(conf) {
 }
 
 function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
-    // test 
+    // test
     var url = util.format("http://%s:%d/user/setup", node_host, node_port);
     fs.stat(cert_path, function(err, stat) {
         if(err) {
@@ -87,22 +87,32 @@ function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
             callback(util.format("cannot open cert: %s", cert_path), null);
             return;
         }
-        
-        restler.post(url, {
-            multipart: true,
-            data: {
-                'ms_url': ms_url,
-                'user': user,
-                'cert': restler.file(cert_path, null, stat.size, null, null)
+
+        fs.readFile(cert_path, function(err, data) {
+            if(err) {
+                utils.log_error(util.format("error occurred - %s", err));
+                callback(util.format("cannot read cert: %s", cert_path), null);
+                return;
             }
-        }).on('complete', function(result, response) {
-            if(result instanceof Error) {
-                utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));
-                callback(result, null);
-            } else {
-                utils.log_info(util.format("[%s:%d] %s", node_host, node_port, JSON.stringify(result)));
-                callback(null, node_host);
-            }
+
+            restler.post(url, {
+                multipart: false,
+                data: {
+                    ms_url: ms_url,
+                    user: user,
+                    cert: data
+                }
+            }).on('complete', function(result, response) {
+                if(result instanceof Error) {
+                    utils.log_error(util.format("[%s:%d] %s", node_host, node_port, result));
+                    callback(result, null);
+                    return;
+                } else {
+                    utils.log_info(util.format("[%s:%d] %s", node_host, node_port, JSON.stringify(result)));
+                    callback(null, node_host);
+                    return;
+                }
+            });
         });
     });
 }
@@ -130,13 +140,13 @@ function setup_user(node_host, node_port, ms_url, user, cert_path, callback) {
         var host_list = client_config.service_hosts;
         var service_port = client_config.service_port;
         var calls = {};
-        
+
         host_list.forEach(function(host) {
             calls[host] = function(callback) {
                 setup_user(host, service_port, client_config.ms_url, client_config.user, client_config.user_cert_path, callback);
             };
         });
-        
+
         async.parallel(calls, function(err, results) {
             if(err === null) {
                 utils.log_info(util.format("setup a user - %s", client_config.user));

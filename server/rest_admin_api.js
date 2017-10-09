@@ -189,7 +189,7 @@ function admin_user_setup(mount_table, session_table, mount_id, ms_url, user, us
 }
 
 function admin_user_delete(mount_table, session_table, mount_id, callback) {
-    utils.log_debug(util.format("deleting a user - U(%s) / MountID(%s)", user, mount_id));
+    utils.log_debug(util.format("deleting a user - MountID(%s)", mount_id));
     async.waterfall([
         function(cb) {
             // check session_table

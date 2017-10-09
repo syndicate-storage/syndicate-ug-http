@@ -340,14 +340,17 @@ function authenticate_session(db, session_name, session_key, callback) {
         }
 
         if(record.anonymous) {
+            utils.log_debug(util.format("authenticated - NAME(%s)", session_name));
             callback(null, record);
             return;
         }
 
         if(make_session_key_hash(record.name, session_key) == record.key) {
+            utils.log_debug(util.format("authenticated - NAME(%s)", session_name));
             callback(null, record);
             return;
         } else {
+            utils.log_debug(util.format("authentication failed - NAME(%s)", session_name));
             callback(null, false, {
                 message: util.format("Session does not exist - %s", session_name)
             });

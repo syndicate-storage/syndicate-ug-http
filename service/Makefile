@@ -1,5 +1,4 @@
-BUILD_FLAG ?=
-#--squash
+BUILD_FLAG ?= --squash
 IMAGE_NAME = syndicate-ug-http
 DOCKERFILE = ./Dockerfile
 

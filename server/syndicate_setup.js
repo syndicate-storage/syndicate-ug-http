@@ -31,27 +31,32 @@ function make_syndicate_conf_path(mount_id) {
     return utils.get_absolute_path(path);
 }
 
+function syndicate_remove_setup(conf_dir, callback) {
+    utils.log_info(util.format("removing a syndicate conf %s", conf_dir));
+    // check
+    exist = utils.check_existance_sync(conf_dir);
+    if (exist) {
+        // empty dir
+        utils.remove_dir_recursively(conf_dir, function(err_remove, result_remove) {
+            if(err_remove) {
+                callback(err_remove, null);
+                return;
+            }
+
+            callback(null, true);
+            return;
+        });
+    } else {
+        callback(null, true);
+        return;
+    }
+}
+
 function syndicate_check_setup(conf_dir, callback) {
     utils.log_info(util.format("checking up a syndicate conf %s", conf_dir));
     // check
     async.waterfall([
         function(cb) {
-            utils.check_existance(conf_dir, function(err, exist) {
-                if(err) {
-                    cb(err, null);
-                    return;
-                }
-
-                cb(null, exist);
-                return;
-            });
-        },
-        function(exist, cb) {
-            if(!exist) {
-                cb(null, false);
-                return;
-            }
-
             var conf_file = util.format("%s/syndicate.conf", conf_dir);
             utils.check_existance(conf_file, function(err, exist_file) {
                 if(err) {
@@ -126,18 +131,6 @@ function syndicate_setup(ms_url, user, conf_dir, cert_path, callback) {
             callback(null, stdout);
         });
     });
-}
-
-function syndicate_remove_setup(conf_dir, callback) {
-    utils.log_info(util.format("removing a syndicate conf %s", conf_dir));
-    // check
-    exist = utils.check_existance_sync(conf_dir);
-    if (exist) {
-        var conf_file = util.format("%s/syndicate.conf", conf_dir);
-        exist = utils.check_existance_sync(conf_file);
-    }
-
-    callback(null, true);
 }
 
 function syndicate_import_gateway(conf_dir, cert_path, callback) {

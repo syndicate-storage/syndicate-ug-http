@@ -1,0 +1,5 @@
+{
+    "port": 38888,
+    "db_path": "./data/data.db",
+    "config_root": "./data"
+}

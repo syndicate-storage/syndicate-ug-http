@@ -63,8 +63,7 @@ RUN update-ca-certificates && \
 # Install Syndicate
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --allow-unauthenticated --no-install-recommends \
-    syndicate-core \
-    syndicatefs && \
+    syndicate-core && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt /var/lib/cache /var/lib/log

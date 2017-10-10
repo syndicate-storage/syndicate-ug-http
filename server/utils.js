@@ -43,7 +43,13 @@ function delete_folder_sync(path) {
 function delete_folder(path, callback) {
     fs.stat(path, function(err, stats) {
         if(err) {
-            callback(err,stats);
+            if(err.code == "ENOENT") {
+                // file not exists
+                callback(null, false);
+                return;
+            }
+
+            callback(err, null);
             return;
         }
 

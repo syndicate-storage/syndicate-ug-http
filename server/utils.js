@@ -30,7 +30,7 @@ function delete_folder_sync(path) {
             var curPath = path + "/" + file;
             if(fs.lstatSync(curPath).isDirectory()) {
                 // recurse
-                delete_folder(curPath);
+                delete_folder_sync(curPath);
             } else {
                 // delete file
                 fs.unlinkSync(curPath);

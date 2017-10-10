@@ -99,19 +99,32 @@ function syndicate_setup(ms_url, user, conf_dir, cert_path, callback) {
     */
     utils.log_info(util.format("setting up a syndicate user %s", user));
     // remove if already exists
-    utils.remove_dir_recursively_sync(conf_dir);
-
-    var conf_file = util.format("%s/syndicate.conf", conf_dir);
-    var cmd = util.format("syndicate -d --trust_public_key -c %s setup %s %s %s", conf_file, user, cert_path, ms_url);
-    utils.log_debug(cmd);
-    var child = exec(cmd, function(error, stdout, stderr) {
-        if (error) {
-            // in this case, it may leave dirties
-            utils.remove_dir_recursively_sync(conf_dir);
-            callback(error, null);
+    utils.remove_dir_recursively(conf_dir, function(err, data) {
+        if(err) {
+            callback(err, null);
             return;
         }
-        callback(null, stdout);
+
+        var conf_file = util.format("%s/syndicate.conf", conf_dir);
+        var cmd = util.format("syndicate -d --trust_public_key -c %s setup %s %s %s", conf_file, user, cert_path, ms_url);
+        utils.log_debug(cmd);
+        var child = exec(cmd, function(error, stdout, stderr) {
+            if (error) {
+                // in this case, it may leave dirties
+                utils.remove_dir_recursively(conf_dir, function(err, data) {
+                    if(err) {
+                        callback(err, null);
+                        return;
+                    }
+
+                    callback(error, null);
+                    return;
+                });
+                return;
+            }
+
+            callback(null, stdout);
+        });
     });
 }
 

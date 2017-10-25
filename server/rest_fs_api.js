@@ -19,6 +19,7 @@ var restUtils = require('./rest_utils.js');
 var utils = require('./utils.js');
 var sessionTable = require('./session_table.js');
 var syndicate = require('syndicate-storage');
+var async = require('async');
 
 
 function fs_statvfs(ug, callback) {
@@ -231,6 +232,89 @@ function fs_read_stateful(ug, path, stat, offset, len, callback) {
                 return;
             });
         }
+    } catch (ex) {
+        callback(ex, null);
+        return;
+    }
+}
+
+function fs_download(ug, path, callback) {
+    utils.log_debug(util.format("fs_download: calling syndicate.open_async - %s", path));
+    try {
+        syndicate.statvfs_async(ug, function(err, statvfs) {
+            if(err) {
+                callback(err, null);
+                return;
+            }
+
+            // use syndicate block_size
+            block_size = statvfs.f_bsize;
+
+            syndicate.open_async(ug, path, 'r', function(err, fh) {
+                if(err) {
+                    callback(err, null);
+                    return;
+                }
+
+                var eof = false;
+                var read_err = null;
+
+                async.whilst(
+                    function() {
+                        return !eof && !read_err;
+                    },
+                    function(loop_cb) {
+                        utils.log_debug("fs_download: calling syndicate.read_async");
+                        syndicate.read_async(ug, fh, block_size, function(err, buffer) {
+                            if(err) {
+                                read_err = err;
+                                loop_cb(err, null);
+                                return;
+                            }
+
+                            if(buffer.length == 0) {
+                                eof = true;
+                                loop_cb(null, null);
+                                return;
+                            } else {
+                                // send partial return
+                                callback(null, buffer);
+                                loop_cb(null, null);
+                                return;
+                            }
+                        });
+                    },
+                    function(err, data) {
+                        if(err) {
+                            utils.log_debug("fs_download: calling syndicate.close_async");
+                            syndicate.close_async(ug, fh, function(close_err, data) {
+                                if(close_err) {
+                                    callback(close_err, null);
+                                    return;
+                                }
+
+                                callback(err, null);
+                                return;
+                            });
+                            return;
+                        }
+
+                        utils.log_debug("fs_download: calling syndicate.close_async");
+                        syndicate.close_async(ug, fh, function(close_err, data) {
+                            if(close_err) {
+                                callback(close_err, null);
+                                return;
+                            }
+
+                            callback(null, null);
+                            return;
+                        });
+                        return;
+                    }
+                );
+            });
+            return;
+        });
     } catch (ex) {
         callback(ex, null);
         return;
@@ -628,6 +712,16 @@ module.exports = {
                 return;
             };
 
+            var return_stream_data = function(err, data) {
+                if(err) {
+                    restUtils.return_error(req, res, err);
+                    return;
+                }
+
+                restUtils.return_stream_data(req, res, data);
+                return;
+            };
+
             if(options.statvfs !== undefined) {
                 // statvfs: ?statvfs
                 fs_statvfs(ug, return_rest_data);
@@ -673,6 +767,9 @@ module.exports = {
                         fs_read_stateful(ug, path, stat, offset, len, return_rest_data);
                     });
                 }
+            } else if(options.download !== undefined) {
+                // download: ?download
+                fs_download(ug, path, return_stream_data);
             } else if(options.open !== undefined) {
                 // open: ?open&flag='r'
                 var flag = options.flag || 'r';

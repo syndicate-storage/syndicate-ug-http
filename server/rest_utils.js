@@ -47,6 +47,20 @@ function return_data(req, res, data) {
     }
 }
 
+function return_stream_data(req, res, data) {
+    if (res.__start_stream === undefined || res.__start_stream == false) {
+        res.status(200);
+        res.__start_stream = true;
+    }
+
+    if(data) {
+        res.write(data);
+        res.flush();
+    } else {
+        res.end();
+    }
+}
+
 function return_boolean(req, res, success) {
     var ret_data = {
         result: success
@@ -120,6 +134,7 @@ function get_post_param(param, options, body) {
 module.exports = {
     make_error_object: make_error_object,
     return_data: return_data,
+    return_stream_data: return_stream_data,
     return_boolean: return_boolean,
     return_error_raw: return_error_raw,
     return_forbidden: return_forbidden,

@@ -18,6 +18,7 @@
 var util = require('util');
 var express = require('express');
 var expressSession = require('express-session');
+var cors = require('cors');
 var querystring = require('querystring');
 var fs = require('fs');
 var path = require('path');
@@ -94,6 +95,9 @@ module.exports = {
     init: function(app, server_config, callback) {
         // init REST
         utils.log_info("init: initializing REST framework");
+
+        // allow cors
+        app.use(cors());
 
         // set session
         app.use(expressSession({

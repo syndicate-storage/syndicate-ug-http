@@ -24,6 +24,7 @@
     "syndicate-storage": "latest",
     "express": "latest",
     "express-session": "latest",
+    "cors": "latest",
     "passport": "latest",
     "passport-http": "latest",
     "node-cache": "latest",

@@ -46,11 +46,13 @@ ENV APT_KEY butler_opencloud_cs_arizona_edu_pub.gpg
 # Prep apt to be able to download over https
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --allow-unauthenticated --no-install-recommends \
-    apt-transport-https ca-certificates \
+    apt-transport-https ca-certificates fuse \
     wget curl unzip build-essential && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
-    rm -rf /var/lib/apt /var/lib/cache /var/lib/log
+    rm -rf /var/lib/apt /var/lib/cache /var/lib/log && \
+    groupadd -f fuse && \
+    usermod -aG fuse $USER
 
 # Copy over and trust https cert
 COPY butler.crt /usr/local/share/ca-certificates
@@ -63,7 +65,7 @@ RUN update-ca-certificates && \
 # Install Syndicate
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --allow-unauthenticated --no-install-recommends \
-    syndicate-core && \
+    syndicate-core syndicate-dataset-manager && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt /var/lib/cache /var/lib/log
@@ -79,6 +81,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt /var/lib/cache /var/lib/log
+
+RUN mkdir -p $HOME/.sdm && \
+    chown $USER:$USER $HOME/.sdm
+
+COPY sdm.conf $HOME/.sdm/
+RUN chown $USER:$USER $HOME/.sdm/sdm.conf
 
 USER $USER
 
